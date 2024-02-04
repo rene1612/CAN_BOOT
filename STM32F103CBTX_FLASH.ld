@@ -45,7 +45,11 @@ _Min_Stack_Size = 0x400; /* required amount of stack */
 MEMORY
 {
   RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 20K
+/* USER CODE BEGIN PD */
   FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 32K
+  FLASH1    (xrw)    : ORIGIN = 0x801F800,   LENGTH = 1K
+  FLASH2    (xrw)    : ORIGIN = 0x801FC00,   LENGTH = 1K
+/* USER CODE END PD */
 }
 
 /* Sections */
@@ -59,11 +63,13 @@ SECTIONS
     . = ALIGN(4);
   } >FLASH
 
+/* USER CODE BEGIN PD */
   /* BOARD NAME GOES INTO FLASH */
   .board_info : 
   {
   	KEEP(*(.board_info))
   } >FLASH
+/* USER CODE END PD */
 
   /* The program code and other data into "FLASH" Rom type memory */
   .text :
@@ -123,6 +129,22 @@ SECTIONS
     PROVIDE_HIDDEN (__init_array_end = .);
     . = ALIGN(4);
   } >FLASH
+
+/* USER CODE BEGIN PD */
+  /* BOARD config GOES INTO FLASH1 */
+  .dev_config : 
+  {
+  	KEEP(*(.dev_config))
+    . = ALIGN(4);
+  } >FLASH1
+
+  /* CRC regs GOES INTO FLASH2 */
+  .dev_crc_regs : 
+  {
+  	KEEP(*(.dev_crc_regs))
+    . = ALIGN(4);
+  } >FLASH2
+/* USER CODE END PD */
 
   .fini_array :
   {

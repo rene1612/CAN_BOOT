@@ -28,6 +28,7 @@ typedef void (*pFunction)(void);
 /* Private variables ---------------------------------------------------------*/
 static uint32_t flash_ptr = APP_ADDRESS;
 
+extern const _DEV_CRC_REGS* pDevCRCRegs;
 
 const uint32_t crc32_tab[] = {
     0x00000000, 0x04c11db7, 0x09823b6e, 0x0d4326d9,
@@ -239,8 +240,7 @@ uint8_t btld_FlashAppSize(void){
     /* Unlock flash */
     HAL_FLASH_Unlock();
 
-	returnedERR=HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, APP_LENGTH_ADDRESS, (uint64_t)(flash_ptr-APP_ADDRESS));
-
+	returnedERR=HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, (uint32_t)&pDevCRCRegs->app_length, (uint64_t)(flash_ptr-APP_ADDRESS));
     /* Lock flash */
     HAL_FLASH_Lock();
 
@@ -339,7 +339,7 @@ uint8_t btld_SaveBlChecksum(void){
 
 	HAL_FLASH_Unlock();
 
-	returnedERR=HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, BL_CRC_ADDRESS, (uint64_t)calculatedCrc);
+	returnedERR=HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, (uint32_t)&pDevCRCRegs->bl_crc32, (uint64_t)calculatedCrc);
 
 	HAL_FLASH_Lock();
 
@@ -361,7 +361,7 @@ uint8_t btld_SaveAppChecksum(void){
 
 	HAL_FLASH_Unlock();
 
-	returnedERR=HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, APP_CRC_ADDRESS, (uint64_t)calculatedCrc);
+	returnedERR=HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, (uint32_t)&pDevCRCRegs->app_crc32, (uint64_t)calculatedCrc);
 
 	HAL_FLASH_Lock();
 
@@ -375,7 +375,7 @@ uint8_t btld_SaveAppLength(void){
     /* Unlock flash */
     HAL_FLASH_Unlock();
 
-	returnedERR=HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, APP_LENGTH_ADDRESS, (uint64_t)(flash_ptr-APP_ADDRESS));
+	returnedERR=HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, (uint32_t)&pDevCRCRegs->app_length, (uint64_t)(flash_ptr-APP_ADDRESS));
 
     /* Lock flash */
     HAL_FLASH_Lock();
@@ -385,22 +385,23 @@ uint8_t btld_SaveAppLength(void){
 
 /* Finish flash programming --------------------------------------------------*/
 uint32_t btld_GetAppLength(void){
-	uint32_t app_length = *((uint32_t *)APP_LENGTH_ADDRESS);
-	if (app_length > APP_SIZE)
+	//uint32_t app_length = *((uint32_t *)APP_LENGTH_ADDRESS);
+	if (pDevCRCRegs->app_length > APP_SIZE)
 		return 0;
 	else
-		return app_length;
+		return pDevCRCRegs->app_length;
 }
 
 /* Finish flash programming --------------------------------------------------*/
 uint32_t btld_GetAppCRC(void){
-	return *((uint32_t *)APP_CRC_ADDRESS);
+	//return *((uint32_t *)APP_CRC_ADDRESS);
+	return pDevCRCRegs->app_crc32;
 }
 
 /* Check for application in user flash ---------------------------------------------*/
 uint8_t btld_CheckForApplication(void){
 
-    return ( ((*(__IO uint32_t*)APP_ADDRESS) - RAM_SIZE) == 0x20000000 ) ? BL_OK : BL_NO_APP;
+    return ( ((*(__IO uint32_t*)APP_ADDRESS) - SRAM_SIZE) == 0x20000000 ) ? BL_OK : BL_NO_APP;
 }
 
 

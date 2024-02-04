@@ -45,15 +45,6 @@ extern "C" {
 
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
-#define CANRX_SA 0x01
-#define CANTX_SA 0x02
-
-#define RX_CMD_CANID 0x00FF00
-#define TX_HEARTBEAT_CANID 0x00FF00
-#define TX_FEEDBACK_CANID 0x00FE00
-
-#define RXFILTERMASK 0xFFFF00FF
-#define RXFILTERID 0x0000FF00 + CANRX_SA
 
 
 /* USER CODE END EM */

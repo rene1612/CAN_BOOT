@@ -27,6 +27,7 @@
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
 #include <math.h>
+#include "dev_config.h"
 /* Includes ------------------------------------------------------------------*/
 
 /*
@@ -34,10 +35,22 @@
 		Flash memory organisation
 
 		0x8020000 -> +-------------+
-					 | 0x801F000   |	\
+					 | 0x801FC00   |	\
 					 |    to       |	 \
 					 | 0x802FFFF   |	  |- Reserved for checksum and other informations
-					 |   4 KB      |	 /
+					 |   1 KB      |	 /
+					 | data        |	/
+		0x801FC00 -> +-------------+
+					 | 0x801F800   |	\
+					 |    to       |	 \
+					 | 0x801FBFF   |	  |- Bootloader and device Config-Stuff (Dev-Addr->Can-ID, can-baudrate, Boardtype, Boardversion ...)
+					 |   1 KB      |	 /
+					 | data        |	/
+		0x801F800 -> +-------------+
+					 | 0x801F000   |	\
+					 |    to       |	 \
+					 | 0x801F7FF   |	  |- Applicaton Configdata (Tempsensor ID-Lookup table,
+					 |   2 KB      |	 /
 					 | data        |	/
 		0x801F000 -> +-------------+
 					 |             |	\
@@ -93,26 +106,57 @@ Bootloader version 1.0.0 CRC32 = 0xC2106B18
 /* USER CODE BEGIN PV */
 __attribute__((__section__(".board_info"))) const unsigned char BOARD_NAME[10] = "BOOT";
 
+__attribute__((__section__(".dev_config"))) const _DEV_CONFIG_REGS dev_config_regs = {
+		__DEV_ID__,
+		BMS_BLK_BOARD,
+		__BOARD_VERSION__,
+		DEAULT_CAN_BITRATE,
+		__BOARD_MF_DATE__
+};
+
+__attribute__((__section__(".dev_crc_regs"))) const _DEV_CRC_REGS dev_crc_regs = {
+		~0U,	//BL crc32
+		0,
+		~0U,	//APP crc32
+		0,
+		~0U,	//APP_CONFIG crc32
+		0,
+		~0U,	//DEV_CONFIG crc32
+		0,
+		BL_PROTECTION_WRP,	// BL Flash Flags
+		BL_PROTECTION_NONE,	// APP Flash Flags
+		BL_PROTECTION_NONE,	// APP_CONFIG Flash Flags
+		BL_PROTECTION_NONE	// DEV_CONFIG Flash Flags
+};
+
+//const _DEV_CONFIG_REGS* pDevConfig = (const _DEV_CONFIG_REGS*)DEV_CONFIG_FL_ADDRESS;
+const _DEV_CONFIG_REGS* pDevConfig = (const _DEV_CONFIG_REGS*)&dev_config_regs;
+
+//const _DEV_CRC_REGS* pDevCRCRegs = (const _DEV_CRC_REGS*)DEV_CRC_FL_ADDRESS;
+const _DEV_CRC_REGS* pDevCRCRegs = (const _DEV_CRC_REGS*)&dev_crc_regs;
 
 uint8_t led_state = 1;
+uint8_t G_LedUpdate=0;
+
+_BL_CTRL_REGS_TYPE bl_ctrl_reg;
 
 uint32_t G_mSCounter=0;
 
-uint8_t G_loader_mode=0;
-uint8_t G_flash_erase_CMD=0;
-uint8_t G_run_app_CMD=0;
-uint8_t G_return_CRC_CMD=0;
-uint8_t G_return_BOOT_CRC_CMD=0;
+//uint8_t G_loader_mode=0;
+//
+//uint8_t G_flash_erase_CMD=0;
+//uint8_t G_run_app_CMD=0;
+//uint8_t G_return_CRC_CMD=0;
+//uint8_t G_return_BOOT_CRC_CMD=0;
+//uint8_t G_start_flash_CMD=0;
+//uint8_t G_write_next_CMD=0;
+//uint8_t G_end_flash_CMD=0;
+//
+//uint32_t G_uint32_to_write=0;
+//uint8_t G_FlashInProgress=0;
+//uint32_t G_index=0;
 
-uint8_t G_start_flash_CMD=0;
-uint8_t G_write_next_CMD=0;
-uint32_t G_uint32_to_write=0;
-uint8_t G_end_flash_CMD=0;
-uint8_t G_FlashInProgress=0;
 
-uint8_t G_LedUpdate=0;
-
-uint32_t G_index=0;
 
 CAN_TxHeaderTypeDef   TxHeader;
 CAN_RxHeaderTypeDef   RxHeader;
@@ -156,6 +200,9 @@ int _write(int file, char *ptr, int len)
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+	bl_ctrl_reg.loader_mode=0;
+	bl_ctrl_reg.FlashInProgress=0;
+
   uint8_t led_counter=0;
   /* USER CODE END 1 */
 
@@ -196,20 +243,30 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+
+  if (*(uint32_t *)_MAGIC_RAM_ADDRESS_ == _MAGIC_RAM_DWORD_) {
+	  //we have an app based bootevent
+	  *(uint32_t *)_MAGIC_RAM_ADDRESS_ = 0;
+  }
+
+  if (pDevConfig->dev_id == 0xFF && pDevConfig->board_type == 0xFF ) {
+	  bl_ctrl_reg.loader_mode=1;
+  }
+
   if(btld_CheckForApplication()==BL_NO_APP){
-	  G_loader_mode=1;
+	  bl_ctrl_reg.loader_mode=1;
   }
   else{
 	  uint32_t app_length_fl=btld_GetAppLength();
 
 	  if(app_length_fl == 0) {
-		  G_loader_mode=1;
+		  bl_ctrl_reg.loader_mode=1;
 		  led_state = 5;
 	  }else{
 		  uint32_t app_cs_calc=btld_GetChecksum(app_length_fl);
 		  uint32_t app_cs_fl=btld_GetAppCRC();
 		  if (app_cs_fl!=app_cs_calc) {
-			  G_loader_mode=1;
+			  bl_ctrl_reg.loader_mode=1;
 			  led_state = 5;
 		  }
 	  }
@@ -220,57 +277,55 @@ int main(void)
 	//uint8_t LOADED=0;
 
 	/* Loader Mode */
-	if(G_loader_mode){
+	if(bl_ctrl_reg.loader_mode){
 
 		/* Erase Flash */
-		if(G_flash_erase_CMD){
-			if(btld_EraseFlash()==HAL_OK){
+		if(bl_ctrl_reg.loader_cmd == BL_erease_FLASH_CMD){
+
+			if(btld_EraseFlash(bl_ctrl_reg.flash_area)==HAL_OK){
 				/* Erase Success */
 				//Send CAN message to know we are in loader mode
-				TxHeader.ExtId=TX_FEEDBACK_CANID + CANTX_SA;
-				TxHeader.IDE=CAN_ID_EXT;
-				TxHeader.RTR=CAN_RTR_DATA;
-				TxHeader.DLC=1;
-				TxData[0]=0xF0;
-
-				HAL_CAN_AddTxMessage(&hcan,&TxHeader,TxData,&TxMailbox);
+				TxData[0]=BL_erease_FLASH_CMD;
 			}else{
 				/* Erase failed */
 				//Send CAN message to know we are in loader mode
-				TxHeader.ExtId=TX_FEEDBACK_CANID + CANTX_SA;
-				TxHeader.IDE=CAN_ID_EXT;
-				TxHeader.RTR=CAN_RTR_DATA;
-				TxHeader.DLC=1;
 				TxData[0]=0xFF;
-
-				HAL_CAN_AddTxMessage(&hcan,&TxHeader,TxData,&TxMailbox);
 			}
 
-			G_flash_erase_CMD=0;
+			TxData[1]=bl_ctrl_reg.flash_area;
+			TxHeader.ExtId=TX_FEEDBACK_CANID + CANTX_SA;
+			TxHeader.IDE=CAN_ID_EXT;
+			TxHeader.RTR=CAN_RTR_DATA;
+			TxHeader.DLC=2;
+
+			HAL_CAN_AddTxMessage(&hcan,&TxHeader,TxData,&TxMailbox);
+
+			bl_ctrl_reg.loader_cmd=0;
 		}
 
 		/* Run Application command */
-		if(G_run_app_CMD){
+		if(bl_ctrl_reg.loader_cmd == BL_run_APP_CMD){
 			//btld_JumpToApp();
 			Run_Application();
 		}
 
-		/* Calculate and send APPLICATION CRC */
-		if(G_return_CRC_CMD){
+		/* Calculate and send CRC */
+		if(bl_ctrl_reg.loader_cmd == BL_ask_for_CRC_CMD){
 			uint32_t checksum;
-			checksum=btld_GetChecksum(btld_GetAppLength());
+			checksum=btld_GetChecksum(bl_ctrl_reg.flash_area);
 
 			/* Send Available flash size for application */
 			TxHeader.ExtId=TX_FEEDBACK_CANID + CANTX_SA;
 			TxHeader.IDE=CAN_ID_EXT;
 			TxHeader.RTR=CAN_RTR_DATA;
-			TxHeader.DLC=5;
-			TxData[0]=0xF4;
+			TxHeader.DLC=6;
+			TxData[0]=BL_ask_for_CRC_CMD;
+			TxData[1]=bl_ctrl_reg.flash_area;
 
-			TxData[1]=(checksum & 0xFF000000)>>24;
-			TxData[2]=(checksum & 0x00FF0000)>>16;
-			TxData[3]=(checksum & 0x0000FF00)>>8;
-			TxData[4]=(checksum & 0x000000FF);
+			TxData[2]=(checksum & 0xFF000000)>>24;
+			TxData[3]=(checksum & 0x00FF0000)>>16;
+			TxData[4]=(checksum & 0x0000FF00)>>8;
+			TxData[5]=(checksum & 0x000000FF);
 
 			/*TxData[1]=(~checksum & 0xFF000000)>>24;
 			TxData[2]=(~checksum & 0x00FF0000)>>16;
@@ -279,35 +334,13 @@ int main(void)
 
 			HAL_CAN_AddTxMessage(&hcan,&TxHeader,TxData,&TxMailbox);
 
-			G_return_CRC_CMD=0;
-		}
-
-		/* Calculate and send BOOTLOADER CRC */
-		if (G_return_BOOT_CRC_CMD) {
-			uint32_t checksum;
-			checksum = btld_GetBootChecksum();
-
-			/* Send Achecksu, */
-			TxHeader.ExtId = TX_FEEDBACK_CANID + CANTX_SA;
-			TxHeader.IDE = CAN_ID_EXT;
-			TxHeader.RTR = CAN_RTR_DATA;
-			TxHeader.DLC = 5;
-			TxData[0] = 0x0F;
-
-			TxData[1] = (checksum & 0xFF000000) >> 24;
-			TxData[2] = (checksum & 0x00FF0000) >> 16;
-			TxData[3] = (checksum & 0x0000FF00) >> 8;
-			TxData[4] = (checksum & 0x000000FF);
-
-			HAL_CAN_AddTxMessage(&hcan, &TxHeader, TxData, &TxMailbox);
-
-			G_return_BOOT_CRC_CMD = 0;
+			bl_ctrl_reg.loader_cmd=0;
 		}
 
 		/* Start Falshing and request new data, respond success  */
-		if (G_start_flash_CMD) {
+		if (bl_ctrl_reg.loader_cmd == BL_start_FLASH_CMD) {
 			btld_FlashBegin();
-			G_FlashInProgress = 1;
+			bl_ctrl_reg.FlashInProgress = 1;
 			led_state = 4;
 
 			// request next WORD
@@ -315,23 +348,24 @@ int main(void)
 			TxHeader.ExtId=TX_FEEDBACK_CANID + CANTX_SA;
 			TxHeader.IDE=CAN_ID_EXT;
 			TxHeader.RTR=CAN_RTR_DATA;
-			TxHeader.DLC=2;
-			TxData[0]=0xF5;
+			TxHeader.DLC=3;
+			TxData[0]=BL_start_FLASH_CMD;
 			TxData[1]=0xFF;	//Success
+			TxData[2]=bl_ctrl_reg.flash_area;
 
 			HAL_CAN_AddTxMessage(&hcan,&TxHeader,TxData,&TxMailbox);
 
-			G_start_flash_CMD=0;
+			bl_ctrl_reg.loader_cmd=0;
 		}
 
 		/* End Falshing and respond success */
-		if (G_end_flash_CMD && G_FlashInProgress){
+		if (bl_ctrl_reg.loader_cmd == BL_done_FLASH_CMD  && bl_ctrl_reg.FlashInProgress){
 
 			btld_FlashEnd();
 			btld_SaveAppLength();
 			btld_SaveAppChecksum();
-			G_FlashInProgress=0;
-			G_end_flash_CMD=0;
+			bl_ctrl_reg.FlashInProgress=0;
+			bl_ctrl_reg.loader_cmd=0;
 			led_state = 1;
 
 			// request next WORD
@@ -339,12 +373,37 @@ int main(void)
 			TxHeader.ExtId=TX_FEEDBACK_CANID + CANTX_SA;
 			TxHeader.IDE=CAN_ID_EXT;
 			TxHeader.RTR=CAN_RTR_DATA;
-			TxHeader.DLC=2;
-			TxData[0]=0xF7;
+			TxHeader.DLC=3;
+			TxData[0]=BL_done_FLASH_CMD;
 			TxData[1]=0xFF;	//Success
+			TxData[2]=bl_ctrl_reg.flash_area;
 
 			HAL_CAN_AddTxMessage(&hcan,&TxHeader,TxData,&TxMailbox);
 		}
+
+		/*  */
+		if (bl_ctrl_reg.loader_cmd == BL_disable_RW_PROTECTION_CMD  || bl_ctrl_reg.loader_cmd == BL_enable_RW_PROTECTION_CMD){
+
+			if (bl_ctrl_reg.loader_cmd == BL_disable_RW_PROTECTION_CMD) {
+				btld_ConfigProtection(bl_ctrl_reg.flash_area, BL_PROTECTION_NONE);
+			}else if (bl_ctrl_reg.loader_cmd == BL_enable_RW_PROTECTION_CMD) {
+				btld_ConfigProtection(bl_ctrl_reg.flash_area, BL_PROTECTION_RDP);
+			}
+
+			/* Send success */
+			TxHeader.ExtId=TX_FEEDBACK_CANID + CANTX_SA;
+			TxHeader.IDE=CAN_ID_EXT;
+			TxHeader.RTR=CAN_RTR_DATA;
+			TxHeader.DLC=3;
+			TxData[0]=bl_ctrl_reg.loader_cmd;
+			TxData[1]=0xFF;	//Success
+			TxData[2]=bl_ctrl_reg.flash_area;
+
+			HAL_CAN_AddTxMessage(&hcan,&TxHeader,TxData,&TxMailbox);
+
+			bl_ctrl_reg.loader_cmd=0;
+		}
+
 
 		// LED CONTROL
 		if (G_LedUpdate) {
@@ -492,7 +551,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			/*---------------------------------------------- Control loop */
 
 			/* Output Write ----------------------------------------------*/
-			if(G_loader_mode){
+			if(bl_ctrl_reg.loader_mode){
 				//Send CAN message to know we are in loader mode
 				TxHeader.ExtId=TX_HEARTBEAT_CANID + CANTX_SA;
 				TxHeader.IDE=CAN_ID_EXT;
@@ -566,125 +625,167 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef* phcan)
 
 	HAL_CAN_GetRxMessage(phcan,CAN_RX_FIFO0,&rxheader,data);
 
+//	typedef enum
+//	{
+//		BL_XXX_CMD						= 0xF0,
+//		BL_erease_FLASH_CMD				= 0xF1,
+//		BL_run_APP_CMD 					= 0xF2,
+//		BL_ask_for_FLASH_space_CMD		= 0xF3,
+//		BL_ask_for_CRC_CMD				= 0xF4,
+//		BL_start_FLASH_CMD				= 0xF5,
+//		BL_next_FLASH_DATA_CMD			= 0xF6,
+//		BL_done_FLASH_CMD				= 0xF7,
+//		BL_disable_RW_PROTECTION_CMD	= 0xF8,
+//		BL_enable_RW_PROTECTION_CMD		= 0xF9,
+//		BL_start_RD_FLASH_CMD			= 0xFA,
+//		BL_next_RD_FLASH_DATA_CMD		= 0xFB,
+//		BL_done_RD_FLASH_CMD			= 0xFC,
+//	}_CAN_BL_CMD_TYPE;
+
 	/* Low level Can management ----------------------------------------------*/
 	if(rxheader.ExtId==(RX_CMD_CANID + CANRX_SA) && rxheader.IDE==CAN_ID_EXT){
 
-		/* xxxt ----------------------------------------------*/
-		if (data[0]==0xF0){
-			G_loader_mode=1;
-		}
+		switch (data[0]) {
 
-		/* erease flash cmd ----------------------------------------------*/
-		if (data[0]==0xF1 && G_loader_mode==1){
-			G_flash_erase_CMD=1;
-		}
+			/* xxxt ----------------------------------------------*/
+			case BL_XXX_CMD:
+				bl_ctrl_reg.loader_mode=1;
+				break;
 
-		/* run app cmd ----------------------------------------------*/
-		if (data[0]==0xF2 && G_loader_mode==1){
-			if(btld_CheckForApplication()==BL_OK){
-				G_run_app_CMD=1;
-			}
-		}
-
-		/* ask for app space cmd ----------------------------------------------*/
-		if (data[0]==0xF3 && G_loader_mode==1){
-			/* Send the available App size in bytes */
-			uint32_t app_size;
-
-			/* APP_SIZE is in DWORD, we multiply by 4 to have the size in bytes */
-			app_size=APP_SIZE;//((END_ADDRESS - APP_ADDRESS) + 1);
-
-			/* Send Available flash size for application */
-			TxHeader.ExtId=TX_FEEDBACK_CANID + CANTX_SA;
-			TxHeader.IDE=CAN_ID_EXT;
-			TxHeader.RTR=CAN_RTR_DATA;
-			TxHeader.DLC=5;
-			TxData[0]=0xF3;
-
-			TxData[1]=(app_size & 0xFF000000)>>24;
-			TxData[2]=(app_size & 0x00FF0000)>>16;
-			TxData[3]=(app_size & 0x0000FF00)>>8;
-			TxData[4]=(app_size & 0x000000FF);
-
-			HAL_CAN_AddTxMessage(&hcan,&TxHeader,TxData,&TxMailbox);
-		}
-
-		/* ask bootloader crc cmd ----------------------------------------------*/
-		if (data[0]==0x0F && G_loader_mode==1){
-			G_return_BOOT_CRC_CMD=1;
-		}
-
-		/* ask for app crc cmd ----------------------------------------------*/
-		if (data[0]==0xF4 && G_loader_mode==1){
-			G_return_CRC_CMD=1;
-		}
-
-		/* start flash cmd ----------------------------------------------*/
-		if (data[0]==0xF5 && G_loader_mode==1){
-			G_index=0;
-			G_start_flash_CMD=1;
-		}
-
-		/* next flash data cmd ----------------------------------------------*/
-		if (data[0] == 0xF6 && G_loader_mode == 1 && rxheader.DLC >= 5) {
-
-
-			G_write_next_CMD = 1;
-			G_uint32_to_write = (((uint32_t) data[1]))
-					| (((uint32_t) data[2]) << 8) | (((uint32_t) data[3]) << 16)
-					| (((uint32_t) data[4]) << 24);
-
-			HAL_CAN_DeactivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING);
-			HAL_TIM_Base_Stop_IT(&htim4);
-
-			if (G_index==((((uint32_t) data[5]) | ((uint32_t) data[6]) << 8))*4) {
-
-				if (btld_FlashNext_32(G_uint32_to_write,&G_index) == BL_OK) {
-					G_write_next_CMD = 0;
-
-					/* Send success // request next WORD */
-					send_confirm_msg(0xFF);
-
-				} else {
-					// Send failed msg
-
-					/* Send failure */
-					send_confirm_msg(0x00);
-
-					G_write_next_CMD = 0;
-					btld_FlashEnd();
-					G_FlashInProgress = 0;
+			/* erease flash cmd ----------------------------------------------*/
+			case BL_erease_FLASH_CMD:
+				if(bl_ctrl_reg.loader_mode){
+					bl_ctrl_reg.flash_area=data[1];
+					bl_ctrl_reg.loader_cmd=BL_erease_FLASH_CMD;
 				}
-			} else {
-				G_write_next_CMD = 0;
+				break;
 
-				/* Send success // request next WORD */
-				send_confirm_msg(0xFF);
-			}
-			HAL_TIM_Base_Start_IT(&htim4);
-			HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING);
+			/* run app cmd ----------------------------------------------*/
+			case BL_run_APP_CMD:
+				if(bl_ctrl_reg.loader_mode){
+					if (btld_CheckForApplication()==BL_OK) {
+						bl_ctrl_reg.loader_cmd=BL_run_APP_CMD;
+					}
+				}
+				break;
+
+			/* ask for flash space cmd ----------------------------------------------*/
+			case BL_ask_for_FLASH_space_CMD:
+				if(bl_ctrl_reg.loader_mode){
+					/* Send the available flash size in bytes */
+					uint32_t flash_size;
+
+					bl_ctrl_reg.flash_area=data[1];
+
+					/* APP_SIZE is in DWORD, we multiply by 4 to have the size in bytes */
+					flash_size=btld_GetFlashSize(bl_ctrl_reg.flash_area);//((END_ADDRESS - APP_ADDRESS) + 1);
+
+					/* Send Available flash size for application */
+					TxHeader.ExtId=TX_FEEDBACK_CANID + CANTX_SA;
+					TxHeader.IDE=CAN_ID_EXT;
+					TxHeader.RTR=CAN_RTR_DATA;
+					TxHeader.DLC=6;
+					TxData[0]=BL_ask_for_FLASH_space_CMD;
+					TxData[1]=bl_ctrl_reg.flash_area;
+
+					TxData[2]=(flash_size & 0xFF000000)>>24;
+					TxData[3]=(flash_size & 0x00FF0000)>>16;
+					TxData[4]=(flash_size & 0x0000FF00)>>8;
+					TxData[5]=(flash_size & 0x000000FF);
+
+					HAL_CAN_AddTxMessage(&hcan,&TxHeader,TxData,&TxMailbox);
+ 				}
+				break;
+
+			/* ask for crc cmd ----------------------------------------------*/
+			case BL_ask_for_CRC_CMD:
+				if(bl_ctrl_reg.loader_mode){
+					bl_ctrl_reg.flash_area=data[1];
+					bl_ctrl_reg.loader_cmd=BL_ask_for_CRC_CMD;
+				}
+				break;
+
+			/* start flash cmd ----------------------------------------------*/
+			case BL_start_FLASH_CMD:
+				if(bl_ctrl_reg.loader_mode){
+					bl_ctrl_reg.flash_area=data[1];
+					bl_ctrl_reg.G_index=0;
+					bl_ctrl_reg.loader_cmd=BL_start_FLASH_CMD;
+				}
+				break;
+
+			/* next flash data cmd ----------------------------------------------*/
+			case BL_next_FLASH_DATA_CMD:
+				if(bl_ctrl_reg.loader_mode && rxheader.DLC >= 5){
+					//bl_ctrl_reg.flash_area=data[1];
+					bl_ctrl_reg.G_uint32_to_write = (((uint32_t) data[1]))
+													| (((uint32_t) data[2]) << 8)
+													| (((uint32_t) data[3]) << 16)
+													| (((uint32_t) data[4]) << 24);
+
+					//bl_ctrl_reg.loader_cmd=BL_next_FLASH_DATA_CMD;
+
+					HAL_CAN_DeactivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING);
+					HAL_TIM_Base_Stop_IT(&htim4);
+
+					if (bl_ctrl_reg.G_index==((((uint32_t) data[5]) | ((uint32_t) data[6]) << 8))*4) {
+
+						if (btld_FlashNext_32(bl_ctrl_reg.flash_area, bl_ctrl_reg.G_uint32_to_write, &bl_ctrl_reg.G_index) == BL_OK) {
+							//bl_ctrl_reg.loader_cmd = 0;
+
+							/* Send success // request next WORD */
+							send_confirm_msg(0xFF);
+
+						} else {
+							// Send failed msg
+							// mark flash area dirty ??? (todo)
+							/* Send failure */
+							send_confirm_msg(0x00);
+
+							//bl_ctrl_reg.loader_cmd = 0;
+							btld_FlashEnd();
+							bl_ctrl_reg.FlashInProgress = 0;
+						}
+					} else {
+						//bl_ctrl_reg.loader_cmd = 0;
+
+						/* Send success // request next WORD */
+						send_confirm_msg(0xFF);
+					}
+
+					HAL_TIM_Base_Start_IT(&htim4);
+					HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING);
+				}
+				break;
+
+			/* flash done cmd ----------------------------------------------*/
+			case BL_done_FLASH_CMD:
+				if(bl_ctrl_reg.loader_mode){
+					bl_ctrl_reg.flash_area=data[1];
+					bl_ctrl_reg.loader_cmd=BL_done_FLASH_CMD;
+				}
+				break;
+
+			/* *Disable/Enable READ/WRITE protection cmd ----------------------------------------------*/
+			case BL_enable_RW_PROTECTION_CMD:
+			case BL_disable_RW_PROTECTION_CMD:
+				if(bl_ctrl_reg.loader_mode && !bl_ctrl_reg.FlashInProgress){
+					if (data[2] == 0xEF && data[3] == 0xFE && data[4] == 0x40 && data[5] == 0x20) {
+						bl_ctrl_reg.flash_area=data[1];
+						bl_ctrl_reg.loader_cmd=data[0];
+						/*Disable READ/WRITE protection*/
+						btld_ConfigProtection(bl_ctrl_reg.flash_area, BL_PROTECTION_NONE);
+
+						/* Send success // request next WORD */
+						//send_confirm_msg(0xFF);
+					}
+				}
+				break;
+
+			default:	//error, unknown command (send error response ???)
+				break;
 		}
 
-		/* flash done cmd ----------------------------------------------*/
-		if (data[0]==0xF7 && G_loader_mode==1){
-			G_end_flash_CMD=1;
-		}
-
-#if READ_PROTECT
-		if (data[0] == 0xF8 && data[1] == 0xEF && data[2] == 0xFE
-				&& data[3] == 0x40 && data[4] == 0x20) {
-			/*Disable READ/WRITE protection*/
-			btld_ConfigProtection(BL_PROTECTION_NONE);
-
-		}
-
-		if (data[0] == 0xF9 && data[1] == 0xEF && data[2] == 0xFE
-				&& data[3] == 0x40 && data[4] == 0x20) {
-			/*Enable READ/WRITE protection*/
-			btld_ConfigProtection(BL_PROTECTION_RDP);
-
-		}
-#endif
 	}
 }
 
@@ -737,7 +838,7 @@ void Run_Application(void){
 void send_confirm_msg(uint8_t status){
 	uint16_t index;
 
-	index = G_index/4;
+	index = bl_ctrl_reg.G_index/4;
 
 	TxHeader.ExtId = 0x00FE00 + CANTX_SA;
 	TxHeader.IDE = CAN_ID_EXT;
