@@ -29,6 +29,7 @@ extern "C" {
 #include "main.h"
 
 /* USER CODE BEGIN Includes */
+#include "dev_config.h"
 
 /* USER CODE END Includes */
 
@@ -51,6 +52,7 @@ typedef enum
 	BL_start_RD_FLASH_CMD			= 0xFA,
 	BL_next_RD_FLASH_DATA_CMD		= 0xFB,
 	BL_done_RD_FLASH_CMD			= 0xFC,
+	BL_validate_FLASH_CMD			= 0xFD
 }_CAN_BL_CMD_TYPE;
 
 #define BMS_BLK_CAN_ID		0x488

@@ -22,6 +22,8 @@
 
 /* USER CODE BEGIN 0 */
 
+extern const _DEV_CONFIG_REGS* pDevConfig;
+
 /* USER CODE END 0 */
 
 CAN_HandleTypeDef hcan;
@@ -34,11 +36,11 @@ void MX_CAN_Init(void)
 
   /* USER CODE END CAN_Init 0 */
 
-  /* USER CODE BEGIN CAN_Init 1 */
 
-  /* USER CODE END CAN_Init 1 */
   hcan.Instance = CAN1;
-  hcan.Init.Prescaler = 18;
+  /* USER CODE BEGIN CAN_Init 1 */
+  hcan.Init.Prescaler = pDevConfig->bl_can_bitrate;
+  /* USER CODE END CAN_Init 1 */
   hcan.Init.Mode = CAN_MODE_NORMAL;
   hcan.Init.SyncJumpWidth = CAN_SJW_1TQ;
   hcan.Init.TimeSeg1 = CAN_BS1_2TQ;

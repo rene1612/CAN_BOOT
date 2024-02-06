@@ -110,13 +110,14 @@ __attribute__((__section__(".dev_config"))) const _DEV_CONFIG_REGS dev_config_re
 		__DEV_ID__,
 		BMS_BLK_BOARD,
 		__BOARD_VERSION__,
-		DEAULT_CAN_BITRATE,
+		DEAULT_BL_CAN_BITRATE,
+		DEAULT_APP_CAN_BITRATE,
 		__BOARD_MF_DATE__
 };
 
 __attribute__((__section__(".dev_crc_regs"))) const _DEV_CRC_REGS dev_crc_regs = {
 		~0U,	//BL crc32
-		0,
+		DEV_BL_SIZE,
 		~0U,	//APP crc32
 		0,
 		~0U,	//APP_CONFIG crc32
@@ -141,21 +142,6 @@ uint8_t G_LedUpdate=0;
 _BL_CTRL_REGS_TYPE bl_ctrl_reg;
 
 uint32_t G_mSCounter=0;
-
-//uint8_t G_loader_mode=0;
-//
-//uint8_t G_flash_erase_CMD=0;
-//uint8_t G_run_app_CMD=0;
-//uint8_t G_return_CRC_CMD=0;
-//uint8_t G_return_BOOT_CRC_CMD=0;
-//uint8_t G_start_flash_CMD=0;
-//uint8_t G_write_next_CMD=0;
-//uint8_t G_end_flash_CMD=0;
-//
-//uint32_t G_uint32_to_write=0;
-//uint8_t G_FlashInProgress=0;
-//uint32_t G_index=0;
-
 
 
 CAN_TxHeaderTypeDef   TxHeader;
@@ -202,8 +188,7 @@ int main(void)
   /* USER CODE BEGIN 1 */
 	bl_ctrl_reg.loader_mode=0;
 	bl_ctrl_reg.FlashInProgress=0;
-
-  uint8_t led_counter=0;
+	uint8_t led_counter=0;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -228,6 +213,21 @@ int main(void)
   MX_CRC_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
+
+	uint32_t bl_cs_fl=btld_GetFlChecksum(BOOTLOADER);
+	uint32_t bl_cs_calc=btld_CalcChecksum(DEV_BL_ADDRESS, DEV_BL_SIZE);
+
+	if ( bl_cs_fl == ~0U ) {	//first time boot?, no valid crc for bootloader in flash
+
+		btld_StoreFlChecksum(BOOTLOADER, bl_cs_calc);
+	}else { //verify bootloader crc???
+		if (bl_cs_calc != bl_cs_fl) {
+			//error bootloader maybe korrupted
+
+			//signal with led??? (todo)
+			Error_Handler();
+		}
+	}
 
   /* Configura CAN RX FILTER */
   config_can_filter();
@@ -257,14 +257,14 @@ int main(void)
 	  bl_ctrl_reg.loader_mode=1;
   }
   else{
-	  uint32_t app_length_fl=btld_GetAppLength();
+	  uint32_t app_length_fl=btld_GetFlLength(APPLICATION);
 
 	  if(app_length_fl == 0) {
 		  bl_ctrl_reg.loader_mode=1;
 		  led_state = 5;
 	  }else{
-		  uint32_t app_cs_calc=btld_GetChecksum(app_length_fl);
-		  uint32_t app_cs_fl=btld_GetAppCRC();
+		  uint32_t app_cs_calc=btld_CalcChecksum(DEV_APP_ADDRESS, app_length_fl);
+		  uint32_t app_cs_fl=btld_GetFlChecksum(APPLICATION);
 		  if (app_cs_fl!=app_cs_calc) {
 			  bl_ctrl_reg.loader_mode=1;
 			  led_state = 5;
@@ -312,7 +312,7 @@ int main(void)
 		/* Calculate and send CRC */
 		if(bl_ctrl_reg.loader_cmd == BL_ask_for_CRC_CMD){
 			uint32_t checksum;
-			checksum=btld_GetChecksum(bl_ctrl_reg.flash_area);
+			checksum=btld_GetFlChecksum(bl_ctrl_reg.flash_area);
 
 			/* Send Available flash size for application */
 			TxHeader.ExtId=TX_FEEDBACK_CANID + CANTX_SA;
@@ -339,9 +339,15 @@ int main(void)
 
 		/* Start Falshing and request new data, respond success  */
 		if (bl_ctrl_reg.loader_cmd == BL_start_FLASH_CMD) {
-			btld_FlashBegin();
-			bl_ctrl_reg.FlashInProgress = 1;
-			led_state = 4;
+
+			if (btld_FlashBegin(bl_ctrl_reg.flash_area) == BL_OK) {
+				TxData[1]=0xFF;	//Success
+				led_state = 4;
+			} else {
+				TxData[1]=0x00;	//Error
+				//led_state = err; (todo)
+			}
+			//bl_ctrl_reg.FlashInProgress = 1;
 
 			// request next WORD
 			/* Send success */
@@ -350,7 +356,6 @@ int main(void)
 			TxHeader.RTR=CAN_RTR_DATA;
 			TxHeader.DLC=3;
 			TxData[0]=BL_start_FLASH_CMD;
-			TxData[1]=0xFF;	//Success
 			TxData[2]=bl_ctrl_reg.flash_area;
 
 			HAL_CAN_AddTxMessage(&hcan,&TxHeader,TxData,&TxMailbox);
@@ -362,8 +367,10 @@ int main(void)
 		if (bl_ctrl_reg.loader_cmd == BL_done_FLASH_CMD  && bl_ctrl_reg.FlashInProgress){
 
 			btld_FlashEnd();
-			btld_SaveAppLength();
-			btld_SaveAppChecksum();
+			//store permanently to crc-flash area
+			btld_SaveFlLength();
+			btld_SaveFlChecksum();
+
 			bl_ctrl_reg.FlashInProgress=0;
 			bl_ctrl_reg.loader_cmd=0;
 			led_state = 1;
@@ -625,23 +632,6 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef* phcan)
 
 	HAL_CAN_GetRxMessage(phcan,CAN_RX_FIFO0,&rxheader,data);
 
-//	typedef enum
-//	{
-//		BL_XXX_CMD						= 0xF0,
-//		BL_erease_FLASH_CMD				= 0xF1,
-//		BL_run_APP_CMD 					= 0xF2,
-//		BL_ask_for_FLASH_space_CMD		= 0xF3,
-//		BL_ask_for_CRC_CMD				= 0xF4,
-//		BL_start_FLASH_CMD				= 0xF5,
-//		BL_next_FLASH_DATA_CMD			= 0xF6,
-//		BL_done_FLASH_CMD				= 0xF7,
-//		BL_disable_RW_PROTECTION_CMD	= 0xF8,
-//		BL_enable_RW_PROTECTION_CMD		= 0xF9,
-//		BL_start_RD_FLASH_CMD			= 0xFA,
-//		BL_next_RD_FLASH_DATA_CMD		= 0xFB,
-//		BL_done_RD_FLASH_CMD			= 0xFC,
-//	}_CAN_BL_CMD_TYPE;
-
 	/* Low level Can management ----------------------------------------------*/
 	if(rxheader.ExtId==(RX_CMD_CANID + CANRX_SA) && rxheader.IDE==CAN_ID_EXT){
 
@@ -669,22 +659,22 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef* phcan)
 				}
 				break;
 
-			/* ask for flash space cmd ----------------------------------------------*/
+			/* ask for flash space and flags cmd ----------------------------------------------*/
 			case BL_ask_for_FLASH_space_CMD:
 				if(bl_ctrl_reg.loader_mode){
 					/* Send the available flash size in bytes */
 					uint32_t flash_size;
 
-					bl_ctrl_reg.flash_area=data[1];
+					//bl_ctrl_reg.flash_area=data[1];
 
 					/* APP_SIZE is in DWORD, we multiply by 4 to have the size in bytes */
-					flash_size=btld_GetFlashSize(bl_ctrl_reg.flash_area);//((END_ADDRESS - APP_ADDRESS) + 1);
+					flash_size=btld_GetMaxFlashSize(data[1]);	//((END_ADDRESS - ADDRESS) + 1);
 
-					/* Send Available flash size for application */
+					/* Send Available flash size for spezific flash area */
 					TxHeader.ExtId=TX_FEEDBACK_CANID + CANTX_SA;
 					TxHeader.IDE=CAN_ID_EXT;
 					TxHeader.RTR=CAN_RTR_DATA;
-					TxHeader.DLC=6;
+					TxHeader.DLC=7;
 					TxData[0]=BL_ask_for_FLASH_space_CMD;
 					TxData[1]=bl_ctrl_reg.flash_area;
 
@@ -692,6 +682,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef* phcan)
 					TxData[3]=(flash_size & 0x00FF0000)>>16;
 					TxData[4]=(flash_size & 0x0000FF00)>>8;
 					TxData[5]=(flash_size & 0x000000FF);
+					TxData[6]=btld_GeFlashFlags(data[1]);
 
 					HAL_CAN_AddTxMessage(&hcan,&TxHeader,TxData,&TxMailbox);
  				}
@@ -730,7 +721,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef* phcan)
 
 					if (bl_ctrl_reg.G_index==((((uint32_t) data[5]) | ((uint32_t) data[6]) << 8))*4) {
 
-						if (btld_FlashNext_32(bl_ctrl_reg.flash_area, bl_ctrl_reg.G_uint32_to_write, &bl_ctrl_reg.G_index) == BL_OK) {
+						if (btld_FlashNext_32(bl_ctrl_reg.G_uint32_to_write, &bl_ctrl_reg.G_index) == BL_OK) {
 							//bl_ctrl_reg.loader_cmd = 0;
 
 							/* Send success // request next WORD */

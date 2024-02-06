@@ -26,9 +26,11 @@ extern CRC_HandleTypeDef hcrc;
 typedef void (*pFunction)(void);
 
 /* Private variables ---------------------------------------------------------*/
-static uint32_t flash_ptr = APP_ADDRESS;
+//static uint32_t flash_ptr = APP_ADDRESS;
 
 extern const _DEV_CRC_REGS* pDevCRCRegs;
+
+extern _BL_CTRL_REGS_TYPE bl_ctrl_reg;
 
 const uint32_t crc32_tab[] = {
     0x00000000, 0x04c11db7, 0x09823b6e, 0x0d4326d9,
@@ -134,23 +136,66 @@ void Bootloader_Init(void){
 
 
 /* Erase flash ---------------------------------------------------------------*/
-uint8_t btld_EraseFlash(void){
-    uint32_t NbrOfPages = 0;
+uint8_t btld_EraseFlash(_FLASH_AREA_TYPE flash_area){
+    //uint32_t NbrOfPages = 0;
     uint32_t PageError  = 0;
     FLASH_EraseInitTypeDef  pEraseInit;
     HAL_StatusTypeDef       status = HAL_OK;
 
+	switch(flash_area) {
+		case BOOTLOADER:
+			if( pDevCRCRegs->bl_fl_flags & BL_PROTECTION_WRP ) {
+				status = BL_WRITE_ERROR;
+			}else {
+				pEraseInit.NbPages = DEV_BL_SIZE / FLASH_PAGE_SIZE;
+		        pEraseInit.PageAddress = DEV_BL_ADDRESS; //FLASH_PAGE_NBPERBANK - pEraseInit.NbPages;
+			}
+			break;
+
+		case APPLICATION:
+			if( pDevCRCRegs->app_fl_flags ) {
+				status = BL_WRITE_ERROR;
+			}else {
+				pEraseInit.NbPages = DEV_APP_SIZE / FLASH_PAGE_SIZE;
+		        pEraseInit.PageAddress = DEV_BL_ADDRESS; //FLASH_PAGE_NBPERBANK - pEraseInit.NbPages;
+			}
+			break;
+
+		case APPLICATION_CONFIG:
+			if( pDevCRCRegs->app_config_fl_flags ) {
+				status = BL_WRITE_ERROR;
+			}else {
+				pEraseInit.NbPages = DEV_APP_CONFIG_SIZE / FLASH_PAGE_SIZE;
+		        pEraseInit.PageAddress = DEV_BL_ADDRESS; //FLASH_PAGE_NBPERBANK - pEraseInit.NbPages;
+			}
+			break;
+
+		case DEVICE_CONFIG:
+			if( pDevCRCRegs->dev_config_fl_flags ) {
+				status = BL_WRITE_ERROR;
+			}else {
+				pEraseInit.NbPages = DEV_CONFIG_FL_SIZE / FLASH_PAGE_SIZE;
+		        pEraseInit.PageAddress = DEV_BL_ADDRESS; //FLASH_PAGE_NBPERBANK - pEraseInit.NbPages;
+			}
+			break;
+
+		case BL_DEV_CRC:
+			//flash_ptr = DEV_CRC_FL_ADDRESS;
+			//break;
+		default:
+			status = BL_ADDR_ERROR;
+			break;
+	}
+
     HAL_FLASH_Unlock();
 
     /* Get the number of pages to erase */
-    NbrOfPages = (FLASH_BASE + FLASH_SIZE - APP_ADDRESS) / FLASH_PAGE_SIZE;
 
     if(status == HAL_OK)
     {
         //pEraseInit.Banks = FLASH_BANK_2;
-        pEraseInit.NbPages = NbrOfPages;
+        //pEraseInit.NbPages = NbrOfPages;
         //pEraseInit.Page = FLASH_PAGE_NBPERBANK - pEraseInit.NbPages;
-        pEraseInit.PageAddress = APP_ADDRESS; //FLASH_PAGE_NBPERBANK - pEraseInit.NbPages;
         pEraseInit.TypeErase = FLASH_TYPEERASE_PAGES;
         status = HAL_FLASHEx_Erase(&pEraseInit, &PageError);
     }
@@ -160,38 +205,161 @@ uint8_t btld_EraseFlash(void){
     return (status == HAL_OK) ? BL_OK : BL_ERASE_ERROR;
 }
 
+
 /* Flash Begin ---------------------------------------------------------------*/
-void btld_FlashBegin(void){
+uint8_t btld_FlashBegin(_FLASH_AREA_TYPE flash_area){
     /* Reset flash destination address */
-    flash_ptr = APP_ADDRESS;
-    
-    //app_size = 0;
+    uint8_t       status = BL_OK;
+
+
+    if (bl_ctrl_reg.FlashInProgress) {
+    	return BL_ERROR;
+    }
+    else
+    {
+        bl_ctrl_reg.flash_ptr = 0x00000000;
+        bl_ctrl_reg.FlashInProgress = 1;
+    }
+
+	switch(flash_area) {
+		case BOOTLOADER:
+			if( pDevCRCRegs->bl_fl_flags & BL_PROTECTION_WRP ) {
+				status = BL_WRITE_ERROR;
+			}else {
+				bl_ctrl_reg.flash_ptr = DEV_BL_ADDRESS;
+				bl_ctrl_reg.flash_start_addr = DEV_BL_ADDRESS;
+				bl_ctrl_reg.flash_end_addr = DEV_BL_ADDRESS + DEV_BL_SIZE;
+			}
+			break;
+
+		case APPLICATION:
+			if( pDevCRCRegs->app_fl_flags ) {
+				status = BL_WRITE_ERROR;
+			}else {
+				bl_ctrl_reg.flash_ptr = DEV_APP_ADDRESS;
+				bl_ctrl_reg.flash_start_addr = DEV_APP_ADDRESS;
+				bl_ctrl_reg.flash_end_addr = DEV_APP_ADDRESS + DEV_APP_SIZE;
+			}
+			break;
+
+		case APPLICATION_CONFIG:
+			if( pDevCRCRegs->app_config_fl_flags ) {
+				status = BL_WRITE_ERROR;
+			}else {
+				bl_ctrl_reg.flash_ptr = DEV_APP_CONFIG_FL_ADDRESS;
+				bl_ctrl_reg.flash_start_addr = DEV_APP_CONFIG_FL_ADDRESS;
+				bl_ctrl_reg.flash_end_addr = DEV_APP_CONFIG_FL_ADDRESS + DEV_APP_CONFIG_SIZE;
+			}
+			break;
+
+		case DEVICE_CONFIG:
+			if( pDevCRCRegs->dev_config_fl_flags ) {
+				status = BL_WRITE_ERROR;
+			}else {
+				bl_ctrl_reg.flash_ptr = DEV_CONFIG_FL_ADDRESS;
+				bl_ctrl_reg.flash_start_addr = DEV_CONFIG_FL_ADDRESS;
+				bl_ctrl_reg.flash_end_addr = DEV_CONFIG_FL_ADDRESS + DEV_CONFIG_FL_SIZE;
+			}
+			break;
+
+		case BL_DEV_CRC:
+			//flash_ptr = DEV_CRC_FL_ADDRESS;
+			//break;
+		default:
+			status = BL_ADDR_ERROR;
+	        bl_ctrl_reg.FlashInProgress = 0;
+			break;
+	}
 
     /* Unlock flash */
     HAL_FLASH_Unlock();
+
+	return status;
 }
 
-/* Program 32bit data into flash ---------------------------------------------*/
-uint8_t btld_FlashNext_32(uint32_t data,uint32_t* index){
 
-    if( !(flash_ptr <= (END_ADDRESS - 3)) || (flash_ptr < APP_ADDRESS) )
+/* Flash Begin ---------------------------------------------------------------*/
+uint32_t btld_GetMaxFlashSize(_FLASH_AREA_TYPE flash_area){
+
+	switch(flash_area) {
+		case BOOTLOADER:
+			return (uint32_t)DEV_BL_SIZE;
+
+		case APPLICATION:
+			return (uint32_t)DEV_APP_SIZE;
+
+		case APPLICATION_CONFIG:
+			return (uint32_t)DEV_APP_CONFIG_SIZE;
+
+		case DEVICE_CONFIG:
+			return (uint32_t)DEV_CONFIG_FL_SIZE;
+
+		case BL_DEV_CRC:
+			//flash_ptr = DEV_CRC_FL_ADDRESS;
+			//break;
+		default:
+			break;
+	}
+
+	return 0;
+}
+
+
+/* Flash Begin ---------------------------------------------------------------*/
+uint8_t btld_GeFlashFlags(_FLASH_AREA_TYPE flash_area){
+
+	switch(flash_area) {
+		case BOOTLOADER:
+			return (uint8_t)pDevCRCRegs->bl_fl_flags;
+
+		case APPLICATION:
+			return (uint8_t)pDevCRCRegs->app_fl_flags;
+
+		case APPLICATION_CONFIG:
+			return (uint8_t)pDevCRCRegs->app_config_fl_flags;
+
+		case DEVICE_CONFIG:
+			return (uint8_t)pDevCRCRegs->dev_config_fl_flags;
+
+		case BL_DEV_CRC:
+			//flash_ptr = DEV_CRC_FL_ADDRESS;
+			//break;
+		default:
+			break;
+	}
+
+	return 0;
+}
+
+
+/* Program 32bit data into flash ---------------------------------------------*/
+uint8_t btld_FlashNext_32(uint32_t data, uint32_t* index){
+
+
+	if ( !bl_ctrl_reg.FlashInProgress )
     {
         HAL_FLASH_Lock();
         return BL_WRITE_ERROR;
     }
 
-    if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, flash_ptr,(uint64_t) data) == HAL_OK)
+    if( !(bl_ctrl_reg.flash_ptr <= (bl_ctrl_reg.flash_end_addr - 4)) || (bl_ctrl_reg.flash_ptr < bl_ctrl_reg.flash_start_addr) )
+    {
+        HAL_FLASH_Lock();
+        return BL_WRITE_ERROR;
+    }
+
+    if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, bl_ctrl_reg.flash_ptr, (uint64_t) data) == HAL_OK)
     {
         /* Check the written value */
-        if(*(uint32_t*)flash_ptr != data)
+        if(*(uint32_t*)bl_ctrl_reg.flash_ptr != data)
         {
             /* Flash content doesn't match source content */
             HAL_FLASH_Lock();
             return BL_WRITE_ERROR;
         }
         /* Increment Flash destination address */
-        flash_ptr += 4;
-        *index=(flash_ptr-APP_ADDRESS);
+        bl_ctrl_reg.flash_ptr += 4;
+        *index=(bl_ctrl_reg.flash_ptr - bl_ctrl_reg.flash_start_addr);
     }
     else
     {
@@ -203,25 +371,33 @@ uint8_t btld_FlashNext_32(uint32_t data,uint32_t* index){
     return BL_OK;
 }
 
+
 /* Program 64bit data into flash ---------------------------------------------*/
 uint8_t btld_FlashNext(uint64_t data){
-    if( !(flash_ptr <= (FLASH_BASE + FLASH_SIZE - 8)) || (flash_ptr < APP_ADDRESS) )
+
+	if ( !bl_ctrl_reg.FlashInProgress )
+    {
+        HAL_FLASH_Lock();
+        return BL_WRITE_ERROR;
+    }
+
+    if( !(bl_ctrl_reg.flash_ptr <= (bl_ctrl_reg.flash_end_addr - 8)) || (bl_ctrl_reg.flash_ptr < bl_ctrl_reg.flash_start_addr) )
     {
         HAL_FLASH_Lock();
         return BL_WRITE_ERROR;
     }
     
-    if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, flash_ptr, data) == HAL_OK)      
+    if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, bl_ctrl_reg.flash_ptr, data) == HAL_OK)
     {
         /* Check the written value */
-        if(*(uint64_t*)flash_ptr != data)
+        if(*(uint64_t*)bl_ctrl_reg.flash_ptr != data)
         {
             /* Flash content doesn't match source content */
             HAL_FLASH_Lock();
             return BL_WRITE_ERROR;
         }   
         /* Increment Flash destination address */
-        flash_ptr += 8;
+        bl_ctrl_reg.flash_ptr += 8;
     }
     else
     {
@@ -232,6 +408,7 @@ uint8_t btld_FlashNext(uint64_t data){
     
     return BL_OK;
 }
+
 
 /* Finish flash programming --------------------------------------------------*/
 uint8_t btld_FlashAppSize(void){
@@ -240,7 +417,7 @@ uint8_t btld_FlashAppSize(void){
     /* Unlock flash */
     HAL_FLASH_Unlock();
 
-	returnedERR=HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, (uint32_t)&pDevCRCRegs->app_length, (uint64_t)(flash_ptr-APP_ADDRESS));
+	returnedERR=HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, (uint32_t)&pDevCRCRegs->app_length, (uint64_t)(bl_ctrl_reg.flash_ptr - DEV_APP_ADDRESS));
     /* Lock flash */
     HAL_FLASH_Lock();
 
@@ -255,8 +432,9 @@ void btld_FlashEnd(void){
     HAL_FLASH_Lock();
 }
 
+
 /* Configure flash write protection ------------------------------------------------*/
-uint8_t btld_ConfigProtection(uint32_t protection){
+uint8_t btld_ConfigProtection(_FLASH_AREA_TYPE flash_area, uint32_t protection){
     FLASH_OBProgramInitTypeDef  OBStruct = {0};
     HAL_StatusTypeDef           status = HAL_ERROR;
     
@@ -296,10 +474,34 @@ uint8_t btld_ConfigProtection(uint32_t protection){
     return (status == HAL_OK) ? BL_OK : BL_OBP_ERROR;
 }
 
+
 /* Check if application fits into user flash ---------------------------------------*/
-uint8_t btld_CheckSize(uint32_t appsize){
-    return ((FLASH_BASE + FLASH_SIZE - APP_ADDRESS) >= appsize) ? BL_OK : BL_SIZE_ERROR;
+uint8_t btld_CheckForSize(_FLASH_AREA_TYPE flash_area, uint32_t size){
+
+ 	switch(flash_area) {
+
+		case BOOTLOADER:
+			return (DEV_BL_SIZE >= size) ? BL_OK : BL_SIZE_ERROR;
+
+		case APPLICATION:
+			return (DEV_APP_SIZE >= size) ? BL_OK : BL_SIZE_ERROR;
+
+		case APPLICATION_CONFIG:
+			return (DEV_APP_CONFIG_SIZE >= size) ? BL_OK : BL_SIZE_ERROR;
+
+		case DEVICE_CONFIG:
+			return (DEV_CONFIG_FL_SIZE >= size) ? BL_OK : BL_SIZE_ERROR;
+
+		case BL_DEV_CRC:
+			//flash_ptr = DEV_CRC_FL_ADDRESS;
+			//break;
+		default:
+			break;
+	}
+
+	return BL_SIZE_ERROR;
 }
+
 
 /* Verify checksum of bootloader ---------------------------------*/
 uint32_t btld_GetBootChecksum(void){
@@ -309,73 +511,145 @@ uint32_t btld_GetBootChecksum(void){
 #ifdef __USE_HAL_CRC
     calculatedCrc = HAL_CRC_Calculate(&hcrc, (uint32_t*)BL_ADDRESS, (BL_SIZE/4));
 #else
-    calculatedCrc = crc32((uint32_t*)BL_ADDRESS, (BL_SIZE/4));
+    calculatedCrc = crc32((uint32_t*)DEV_BL_ADDRESS, (DEV_BL_SIZE/4));
 #endif
 
     return calculatedCrc;
 
 }
 
+
 /* Verify checksum of application located in flash ---------------------------------*/
-uint32_t btld_GetChecksum(uint32_t Length){
+uint32_t btld_CalcChecksum(uint32_t start_addr, uint32_t Length){
 
     uint32_t calculatedCrc = 0;
 
 #ifdef __USE_HAL_CRC
     //calculatedCrc = HAL_CRC_Calculate(&hcrc, (uint32_t*)APP_ADDRESS, (APP_SIZE/4));
-    calculatedCrc = HAL_CRC_Calculate(&hcrc, (uint32_t*)APP_ADDRESS, (Length/4));
+    calculatedCrc = HAL_CRC_Calculate(&hcrc, (uint32_t *)start_addr, (Length/4));
 #else
-    calculatedCrc = crc32((uint32_t*)APP_ADDRESS, (Length/4));
+    calculatedCrc = crc32((uint32_t *)start_addr, (Length/4));
 #endif
    return calculatedCrc;
 }
 
-/* Save checksum to flash ----------------------------------------------------------*/
-uint8_t btld_SaveBlChecksum(void){
-	uint32_t calculatedCrc = 0;
-	HAL_StatusTypeDef returnedERR=HAL_OK;
+/* Verify checksum of application located in flash ---------------------------------*/
+uint32_t btld_GetFlChecksum(_FLASH_AREA_TYPE flash_area) {
 
-	calculatedCrc=btld_GetBootChecksum();
+ 	switch(flash_area) {
+
+		case BOOTLOADER:
+			return (uint32_t)pDevCRCRegs->bl_crc32;
+
+		case APPLICATION:
+			return (uint32_t)pDevCRCRegs->app_crc32;
+
+		case APPLICATION_CONFIG:
+			return (uint32_t)pDevCRCRegs->app_config_crc32;
+
+		case DEVICE_CONFIG:
+			return (uint32_t)pDevCRCRegs->dev_config_crc32;
+
+		case BL_DEV_CRC:
+			//flash_ptr = DEV_CRC_FL_ADDRESS;
+			//break;
+		default:
+			break;
+	}
+
+ 	return (uint32_t)~0U;
+}
+
+
+/* Save checksum to flash ----------------------------------------------------------*/
+uint8_t btld_StoreFlChecksum(_FLASH_AREA_TYPE flash_area, uint32_t checksum){
+	//uint32_t calculatedCrc = 0;
+	HAL_StatusTypeDef returnedERR=HAL_OK;
 
 	HAL_FLASH_Unlock();
 
-	returnedERR=HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, (uint32_t)&pDevCRCRegs->bl_crc32, (uint64_t)calculatedCrc);
+ 	switch(flash_area) {
+
+		case BOOTLOADER:
+			returnedERR=HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, (uint32_t)&pDevCRCRegs->bl_crc32, (uint64_t)checksum);
+			break;
+
+		case APPLICATION:
+			returnedERR=HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, (uint32_t)&pDevCRCRegs->app_crc32, (uint64_t)checksum);
+			break;
+
+		case APPLICATION_CONFIG:
+			returnedERR=HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, (uint32_t)&pDevCRCRegs->app_config_crc32, (uint64_t)checksum);
+			break;
+
+		case DEVICE_CONFIG:
+			returnedERR=HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, (uint32_t)&pDevCRCRegs->dev_config_crc32, (uint64_t)checksum);
+			break;
+
+		case BL_DEV_CRC:
+			//flash_ptr = DEV_CRC_FL_ADDRESS;
+			//break;
+		default:
+			break;
+	}
 
 	HAL_FLASH_Lock();
 
 	return returnedERR;
 }
 
+
+
 /* Save checksum to flash ----------------------------------------------------------*/
-uint8_t btld_SaveAppChecksum(void){
+uint8_t btld_SaveFlChecksum(void){
 	uint32_t calculatedCrc = 0;
 	HAL_StatusTypeDef returnedERR=HAL_OK;
-	uint32_t app_length = 0;
+	uint32_t length = 0;
 
-	app_length =  (uint32_t)(flash_ptr-APP_ADDRESS);
+	length =  (uint32_t)(bl_ctrl_reg.flash_ptr - bl_ctrl_reg.flash_start_addr);
 
-	if (app_length > APP_SIZE)
-		return HAL_ERROR;
+	calculatedCrc=btld_CalcChecksum(bl_ctrl_reg.flash_start_addr, length);
 
-	calculatedCrc=btld_GetChecksum(app_length);
-
-	HAL_FLASH_Unlock();
-
-	returnedERR=HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, (uint32_t)&pDevCRCRegs->app_crc32, (uint64_t)calculatedCrc);
-
-	HAL_FLASH_Lock();
+	returnedERR = btld_StoreFlChecksum(bl_ctrl_reg.flash_area, calculatedCrc);
 
 	return returnedERR;
 }
+
 
 /* Finish flash programming --------------------------------------------------*/
-uint8_t btld_SaveAppLength(void){
+uint8_t btld_SaveFlLength(void){
 	HAL_StatusTypeDef returnedERR=HAL_OK;
-
+	uint32_t length;
     /* Unlock flash */
+
+	length =  (uint32_t)(bl_ctrl_reg.flash_ptr - bl_ctrl_reg.flash_start_addr);
+
     HAL_FLASH_Unlock();
 
-	returnedERR=HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, (uint32_t)&pDevCRCRegs->app_length, (uint64_t)(flash_ptr-APP_ADDRESS));
+ 	switch(bl_ctrl_reg.flash_area) {
+
+		case BOOTLOADER:
+			returnedERR=HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, (uint32_t)&pDevCRCRegs->bl_length, (uint64_t)length);
+			break;
+
+		case APPLICATION:
+			returnedERR=HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, (uint32_t)&pDevCRCRegs->app_length, (uint64_t)length);
+			break;
+
+		case APPLICATION_CONFIG:
+			returnedERR=HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, (uint32_t)&pDevCRCRegs->app_config_length, (uint64_t)length);
+			break;
+
+		case DEVICE_CONFIG:
+			returnedERR=HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, (uint32_t)&pDevCRCRegs->dev_config_length, (uint64_t)length);
+			break;
+
+		case BL_DEV_CRC:
+			//flash_ptr = DEV_CRC_FL_ADDRESS;
+			//break;
+		default:
+			break;
+	}
 
     /* Lock flash */
     HAL_FLASH_Lock();
@@ -383,31 +657,56 @@ uint8_t btld_SaveAppLength(void){
 	return returnedERR;
 }
 
-/* Finish flash programming --------------------------------------------------*/
-uint32_t btld_GetAppLength(void){
-	//uint32_t app_length = *((uint32_t *)APP_LENGTH_ADDRESS);
-	if (pDevCRCRegs->app_length > APP_SIZE)
-		return 0;
-	else
-		return pDevCRCRegs->app_length;
-}
 
 /* Finish flash programming --------------------------------------------------*/
-uint32_t btld_GetAppCRC(void){
-	//return *((uint32_t *)APP_CRC_ADDRESS);
-	return pDevCRCRegs->app_crc32;
+uint32_t btld_GetFlLength(_FLASH_AREA_TYPE flash_area) {
+
+ 	switch(flash_area) {
+
+		case BOOTLOADER:
+			if (pDevCRCRegs->bl_length <= DEV_BL_SIZE)
+				return pDevCRCRegs->bl_length;
+
+		case APPLICATION:
+			if (pDevCRCRegs->app_length <= DEV_APP_SIZE)
+				return pDevCRCRegs->app_length;
+
+		case APPLICATION_CONFIG:
+			if (pDevCRCRegs->app_config_length <= DEV_APP_CONFIG_SIZE)
+				return pDevCRCRegs->app_config_length;
+
+		case DEVICE_CONFIG:
+			if (pDevCRCRegs->dev_config_length <= DEV_CONFIG_FL_SIZE)
+				return pDevCRCRegs->dev_config_length;
+
+		case BL_DEV_CRC:
+			//flash_ptr = DEV_CRC_FL_ADDRESS;
+			//break;
+		default:
+			break;
+	}
+
+	return 0;
 }
+
+
+///* Finish flash programming --------------------------------------------------*/
+//uint32_t btld_GetAppCRC(void){
+//	//return *((uint32_t *)APP_CRC_ADDRESS);
+//	return pDevCRCRegs->app_crc32;
+//}
+
 
 /* Check for application in user flash ---------------------------------------------*/
 uint8_t btld_CheckForApplication(void){
 
-    return ( ((*(__IO uint32_t*)APP_ADDRESS) - SRAM_SIZE) == 0x20000000 ) ? BL_OK : BL_NO_APP;
+    return ( ((*(__IO uint32_t*)DEV_APP_ADDRESS) - SRAM_SIZE) == 0x20000000 ) ? BL_OK : BL_NO_APP;
 }
 
 
 /* Jump to application -------------------------------------------------------------*/
 void btld_JumpToApp(void){
-    uint32_t  JumpAddress = *(__IO uint32_t*)(APP_ADDRESS + 4);
+    uint32_t  JumpAddress = *(__IO uint32_t*)(DEV_APP_ADDRESS + 4);
     pFunction Jump = (pFunction)JumpAddress;
     
 
@@ -421,12 +720,13 @@ void btld_JumpToApp(void){
     SysTick->VAL  = 0;
     
 #if (SET_VECTOR_TABLE)
-    SCB->VTOR = APP_ADDRESS;
+    SCB->VTOR = DEV_APP_ADDRESS;
 #endif
     
-    __set_MSP(*(__IO uint32_t*)APP_ADDRESS);
+    __set_MSP(*(__IO uint32_t*)DEV_APP_ADDRESS);
     Jump();
 }
+
 
 /* Jump to System Memory (ST Bootloader) -------------------------------------------*/
 void btld_JumpToSysMem(void){
