@@ -201,7 +201,7 @@ uint8_t btld_ConfigProtection(_FLASH_AREA_TYPE flash_area, uint32_t protection);
 
 uint8_t btld_CheckForSize(_FLASH_AREA_TYPE flash_area, uint32_t size);
 uint32_t btld_GetFlChecksum(_FLASH_AREA_TYPE flash_area);
-
+uint8_t btld_ValidateFlAreak(_FLASH_AREA_TYPE flash_area);
 uint32_t btld_CalcChecksum(uint32_t start_addr, uint32_t Length);
 
 uint8_t btld_StoreFlChecksum(_FLASH_AREA_TYPE flash_area, uint32_t checksum);

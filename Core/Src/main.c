@@ -123,7 +123,7 @@ __attribute__((__section__(".dev_crc_regs"))) const _DEV_CRC_REGS dev_crc_regs =
 		~0U,	//APP_CONFIG crc32
 		0,
 		~0U,	//DEV_CONFIG crc32
-		0,
+		sizeof(_DEV_CONFIG_REGS),
 		BL_PROTECTION_WRP,	// BL Flash Flags
 		BL_PROTECTION_NONE,	// APP Flash Flags
 		BL_PROTECTION_NONE,	// APP_CONFIG Flash Flags
@@ -216,16 +216,48 @@ int main(void)
 
 	uint32_t bl_cs_fl=btld_GetFlChecksum(BOOTLOADER);
 	uint32_t bl_cs_calc=btld_CalcChecksum(DEV_BL_ADDRESS, DEV_BL_SIZE);
+	uint32_t dev_cfg_cs_fl=btld_GetFlChecksum(DEVICE_CONFIG);
+	uint32_t dev_cfg_length = btld_GetFlLength(DEVICE_CONFIG);
+	uint32_t dev_cfg_cs_calc;
 
-	if ( bl_cs_fl == ~0U ) {	//first time boot?, no valid crc for bootloader in flash
+	if (dev_cfg_length) {
+		dev_cfg_cs_calc = btld_CalcChecksum(DEV_CONFIG_FL_ADDRESS, dev_cfg_length);
+	}
+
+	if ( bl_cs_fl == ~0U ) {	//first time boot?, no valid crc for bootloader and dev_config in flash
 
 		btld_StoreFlChecksum(BOOTLOADER, bl_cs_calc);
-	}else { //verify bootloader crc???
-		if (bl_cs_calc != bl_cs_fl) {
-			//error bootloader maybe korrupted
+
+		if ( dev_cfg_cs_fl == ~0U ) {
+			btld_StoreFlChecksum(DEVICE_CONFIG, dev_cfg_cs_calc);
+		}
+
+		//fist time run of bootloader > we want to stay in bootloader and dont run APP???
+		bl_ctrl_reg.loader_mode=1;
+
+	} else { //verify bootloader crc??? and //check for dev_config integrity
+
+		if ( (bl_cs_calc != bl_cs_fl) || (dev_cfg_cs_calc != dev_cfg_cs_fl) ) {
+			//error bootloader or dev_config maybe corrupted
 
 			//signal with led??? (todo)
 			Error_Handler();
+		}
+
+		//if we have initial or default dev-config, stay in loader mode??
+		if (pDevConfig->dev_id == 0xFF && pDevConfig->board_type == 0xFF ) {
+			bl_ctrl_reg.loader_mode=1;
+		}
+
+		if(btld_CheckForApplication()==BL_NO_APP){
+			bl_ctrl_reg.loader_mode=1;
+		}
+		else{
+			if ( btld_ValidateFlAreak(APPLICATION) != BL_OK )
+			{
+				bl_ctrl_reg.loader_mode=1;
+				led_state = 5;
+			}
 		}
 	}
 
@@ -247,30 +279,9 @@ int main(void)
   if (*(uint32_t *)_MAGIC_RAM_ADDRESS_ == _MAGIC_RAM_DWORD_) {
 	  //we have an app based bootevent
 	  *(uint32_t *)_MAGIC_RAM_ADDRESS_ = 0;
-  }
-
-  if (pDevConfig->dev_id == 0xFF && pDevConfig->board_type == 0xFF ) {
 	  bl_ctrl_reg.loader_mode=1;
   }
 
-  if(btld_CheckForApplication()==BL_NO_APP){
-	  bl_ctrl_reg.loader_mode=1;
-  }
-  else{
-	  uint32_t app_length_fl=btld_GetFlLength(APPLICATION);
-
-	  if(app_length_fl == 0) {
-		  bl_ctrl_reg.loader_mode=1;
-		  led_state = 5;
-	  }else{
-		  uint32_t app_cs_calc=btld_CalcChecksum(DEV_APP_ADDRESS, app_length_fl);
-		  uint32_t app_cs_fl=btld_GetFlChecksum(APPLICATION);
-		  if (app_cs_fl!=app_cs_calc) {
-			  bl_ctrl_reg.loader_mode=1;
-			  led_state = 5;
-		  }
-	  }
-  }
 
   while (1)
   {

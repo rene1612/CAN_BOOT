@@ -504,6 +504,48 @@ uint8_t btld_CheckForSize(_FLASH_AREA_TYPE flash_area, uint32_t size){
 
 
 /* Verify checksum of bootloader ---------------------------------*/
+uint8_t btld_ValidateFlAreak(_FLASH_AREA_TYPE flash_area) {
+
+	uint32_t fl_length = btld_GetFlLength(flash_area);
+	uint32_t fl_addr;
+
+	if(fl_length == 0) {
+		return BL_ERROR;
+	}else{
+		switch (flash_area) {
+			case BOOTLOADER:
+				fl_addr= DEV_BL_ADDRESS;
+				break;
+
+			case APPLICATION:
+				fl_addr= DEV_APP_ADDRESS;
+				break;
+
+			case APPLICATION_CONFIG:
+				fl_addr= DEV_APP_CONFIG_FL_ADDRESS;
+				break;
+
+			case DEVICE_CONFIG:
+				fl_addr= DEV_CONFIG_FL_ADDRESS;
+				break;
+
+			case BL_DEV_CRC:
+				//flash_ptr = DEV_CRC_FL_ADDRESS;
+				//break;
+			default:
+				return BL_ADDR_ERROR;
+
+		}
+		uint32_t fl_cs_calc=btld_CalcChecksum(fl_addr, fl_length);
+		uint32_t fl_cs_fl=btld_GetFlChecksum(flash_area);
+		if ( fl_cs_fl != fl_cs_calc ) {
+			return BL_CHKS_ERROR;
+		}
+	}
+	return BL_OK;
+}
+
+
 uint32_t btld_GetBootChecksum(void){
 
     uint32_t calculatedCrc = 0;
