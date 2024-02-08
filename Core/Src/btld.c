@@ -504,7 +504,7 @@ uint8_t btld_CheckForSize(_FLASH_AREA_TYPE flash_area, uint32_t size){
 
 
 /* Verify checksum of bootloader ---------------------------------*/
-uint8_t btld_ValidateFlAreak(_FLASH_AREA_TYPE flash_area) {
+uint8_t btld_ValidateFlArea(_FLASH_AREA_TYPE flash_area) {
 
 	uint32_t fl_length = btld_GetFlLength(flash_area);
 	uint32_t fl_addr;

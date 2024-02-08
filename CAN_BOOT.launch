@@ -99,5 +99,5 @@
     </listAttribute>
     <stringAttribute key="org.eclipse.dsf.launch.MEMORY_BLOCKS" value="&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;no&quot;?&gt;&lt;memoryBlockExpressionList context=&quot;reserved-for-future-use&quot;&gt;&lt;gdbmemoryBlockExpression address=&quot;536891372&quot; label=&quot;&amp;amp;(temp)&quot;/&gt;&lt;/memoryBlockExpressionList&gt;"/>
     <stringAttribute key="process_factory_id" value="com.st.stm32cube.ide.mcu.debug.launch.HardwareDebugProcessFactory"/>
-    <stringAttribute key="saved_expressions&lt;seperator&gt;Unknown" value="0x8008000,0xFFFFFFF9,0x8000000,0xe000edf8,0x800c000,0x801f000,0x801FC00,0x20004ffc,0x20004ff0,0x20004f00,0x20004000"/>
+    <stringAttribute key="saved_expressions&lt;seperator&gt;Unknown" value="0x8008000,0xFFFFFFF9,0x8000000,0xe000edf8,0x800c000,0x801f000,0x801FC00,0x20004ffc,0x20004ff0,0x20004f00,0x20004000,0x801F000,0x801C000"/>
 </launchConfiguration>

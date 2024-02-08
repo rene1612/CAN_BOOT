@@ -21,8 +21,10 @@
 #include "can.h"
 
 /* USER CODE BEGIN 0 */
+#include "btld.h"
 
 extern const _DEV_CONFIG_REGS* pDevConfig;
+extern _BL_CTRL_REGS_TYPE bl_ctrl_reg;
 
 /* USER CODE END 0 */
 
@@ -57,6 +59,35 @@ void MX_CAN_Init(void)
   }
   /* USER CODE BEGIN CAN_Init 2 */
 
+	bl_ctrl_reg.rx_cmd_can_id = (pDevConfig->dev_id<<8) + CANRX_SA;
+	bl_ctrl_reg.tx_feedback_can_id = (pDevConfig->dev_id<<8) + CANTX_SA;
+	bl_ctrl_reg.tx_heartbeat_can_id = (pDevConfig->dev_id<<8) + CANTX_HA;
+
+	bl_ctrl_reg.can_filterMask = RXFILTERMASK;
+	bl_ctrl_reg.can_filterID = (pDevConfig->dev_id<<8); // Only accept bootloader CAN message ID
+
+	/* config_can_filter ---------------------------------------------------------*/
+	/* Setup Can-Filter                                                           */
+   CAN_FilterTypeDef sFilterConfig;
+
+  /*##-2- Configure the CAN Filter ###########################################*/
+  //sFilterConfig.FilterNumber = 0;
+  sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
+  sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
+
+  sFilterConfig.FilterIdHigh = bl_ctrl_reg.can_filterID >> 13;
+  sFilterConfig.FilterIdLow = ((bl_ctrl_reg.can_filterID << 3) | (1 << 2));
+
+  sFilterConfig.FilterMaskIdHigh = bl_ctrl_reg.can_filterMask >> 13;
+  sFilterConfig.FilterMaskIdLow = ((bl_ctrl_reg.can_filterMask << 3) | (1 << 2));
+
+  sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO0;
+  sFilterConfig.FilterActivation = ENABLE;
+  sFilterConfig.FilterBank = 0;
+  if (HAL_CAN_ConfigFilter(&hcan, &sFilterConfig) != HAL_OK)
+  {
+	Error_Handler();
+  }
 
 //  canfilterconfig.FilterActivation = CAN_FILTER_ENABLE;
 //  canfilterconfig.FilterBank = 13;  // which filter bank to use from the assigned ones
@@ -65,11 +96,6 @@ void MX_CAN_Init(void)
 //  canfilterconfig.FilterIdLow = 0;
 //  canfilterconfig.FilterMaskIdHigh = 0x446<<5;
 //  canfilterconfig.FilterMaskIdLow = 0x0000;
-//  canfilterconfig.FilterMode = CAN_FILTERMODE_IDMASK;
-//  canfilterconfig.FilterScale = CAN_FILTERSCALE_32BIT;
-//  canfilterconfig.SlaveStartFilterBank = 14;  // how many filters to assign to the CAN1 (master can)
-//
-//  HAL_CAN_ConfigFilter(&hcan, &canfilterconfig);
 
   /* USER CODE END CAN_Init 2 */
 

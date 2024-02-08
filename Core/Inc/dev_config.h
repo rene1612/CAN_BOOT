@@ -62,7 +62,7 @@
 #define DEAULT_BL_CAN_BITRATE		_125_Kbit
 #define DEAULT_APP_CAN_BITRATE		_500_Kbit
 
-#define __DEV_ID__					0xFF
+#define __DEV_ID__					0x8F
 #define __BOARD_VERSION__			0x0100
 #define BOARD_MF_DAY				8
 #define BOARD_MF_MONTH				12

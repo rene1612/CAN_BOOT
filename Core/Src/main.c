@@ -249,12 +249,10 @@ int main(void)
 			bl_ctrl_reg.loader_mode=1;
 		}
 
-		if(btld_CheckForApplication()==BL_NO_APP){
+		if(btld_CheckForApplication()==BL_NO_APP) {
 			bl_ctrl_reg.loader_mode=1;
-		}
-		else{
-			if ( btld_ValidateFlAreak(APPLICATION) != BL_OK )
-			{
+		} else {
+			if ( btld_ValidateFlArea(APPLICATION) != BL_OK ) {
 				bl_ctrl_reg.loader_mode=1;
 				led_state = 5;
 			}
@@ -262,7 +260,7 @@ int main(void)
 	}
 
   /* Configura CAN RX FILTER */
-  config_can_filter();
+  //config_can_filter();
 
   /* Start CAN recieve Interrupt */
   HAL_CAN_Start(&hcan);
@@ -304,7 +302,7 @@ int main(void)
 			}
 
 			TxData[1]=bl_ctrl_reg.flash_area;
-			TxHeader.ExtId=TX_FEEDBACK_CANID + CANTX_SA;
+			TxHeader.ExtId=bl_ctrl_reg.tx_feedback_can_id;
 			TxHeader.IDE=CAN_ID_EXT;
 			TxHeader.RTR=CAN_RTR_DATA;
 			TxHeader.DLC=2;
@@ -326,7 +324,7 @@ int main(void)
 			checksum=btld_GetFlChecksum(bl_ctrl_reg.flash_area);
 
 			/* Send Available flash size for application */
-			TxHeader.ExtId=TX_FEEDBACK_CANID + CANTX_SA;
+			TxHeader.ExtId=bl_ctrl_reg.tx_feedback_can_id;
 			TxHeader.IDE=CAN_ID_EXT;
 			TxHeader.RTR=CAN_RTR_DATA;
 			TxHeader.DLC=6;
@@ -362,7 +360,7 @@ int main(void)
 
 			// request next WORD
 			/* Send success */
-			TxHeader.ExtId=TX_FEEDBACK_CANID + CANTX_SA;
+			TxHeader.ExtId=bl_ctrl_reg.tx_feedback_can_id;
 			TxHeader.IDE=CAN_ID_EXT;
 			TxHeader.RTR=CAN_RTR_DATA;
 			TxHeader.DLC=3;
@@ -388,7 +386,7 @@ int main(void)
 
 			// request next WORD
 			/* Send success */
-			TxHeader.ExtId=TX_FEEDBACK_CANID + CANTX_SA;
+			TxHeader.ExtId=bl_ctrl_reg.tx_feedback_can_id;
 			TxHeader.IDE=CAN_ID_EXT;
 			TxHeader.RTR=CAN_RTR_DATA;
 			TxHeader.DLC=3;
@@ -409,7 +407,7 @@ int main(void)
 			}
 
 			/* Send success */
-			TxHeader.ExtId=TX_FEEDBACK_CANID + CANTX_SA;
+			TxHeader.ExtId=bl_ctrl_reg.tx_feedback_can_id;
 			TxHeader.IDE=CAN_ID_EXT;
 			TxHeader.RTR=CAN_RTR_DATA;
 			TxHeader.DLC=3;
@@ -571,7 +569,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			/* Output Write ----------------------------------------------*/
 			if(bl_ctrl_reg.loader_mode){
 				//Send CAN message to know we are in loader mode
-				TxHeader.ExtId=TX_HEARTBEAT_CANID + CANTX_SA;
+				TxHeader.ExtId=bl_ctrl_reg.tx_heartbeat_can_id;
 				TxHeader.IDE=CAN_ID_EXT;
 				TxHeader.RTR=CAN_RTR_DATA;
 				TxHeader.DLC=1;
@@ -644,7 +642,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef* phcan)
 	HAL_CAN_GetRxMessage(phcan,CAN_RX_FIFO0,&rxheader,data);
 
 	/* Low level Can management ----------------------------------------------*/
-	if(rxheader.ExtId==(RX_CMD_CANID + CANRX_SA) && rxheader.IDE==CAN_ID_EXT){
+	if(rxheader.ExtId==bl_ctrl_reg.rx_cmd_can_id && rxheader.IDE==CAN_ID_EXT){
 
 		switch (data[0]) {
 
@@ -682,7 +680,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef* phcan)
 					flash_size=btld_GetMaxFlashSize(data[1]);	//((END_ADDRESS - ADDRESS) + 1);
 
 					/* Send Available flash size for spezific flash area */
-					TxHeader.ExtId=TX_FEEDBACK_CANID + CANTX_SA;
+					TxHeader.ExtId=bl_ctrl_reg.tx_feedback_can_id;
 					TxHeader.IDE=CAN_ID_EXT;
 					TxHeader.RTR=CAN_RTR_DATA;
 					TxHeader.DLC=7;
@@ -794,33 +792,31 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef* phcan)
 /* Bootloader functions-------------------------------------------------------*/
 
 
-/* config_can_filter ---------------------------------------------------------*/
-/* Setup Can-Filter                                                           */
-/*----------------------------------------------------------------------------*/
-void config_can_filter(void){
-   CAN_FilterTypeDef sFilterConfig;
-
-   	   	   	   	   	   	   	  /* Leave mask bits for different messages commands
-   	   	   	   	   	   	   	  |  	  	  	  	  	  	  	  	  	  	  	  	 */
-   uint32_t filterMask=	RXFILTERMASK;
-   uint32_t filterID=	RXFILTERID; // Only accept bootloader CAN message ID
-
-  /*##-2- Configure the CAN Filter ###########################################*/
-  //sFilterConfig.FilterNumber = 0;
-  sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
-  sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
-  sFilterConfig.FilterIdHigh = filterID >> 13;
-  sFilterConfig.FilterIdLow = (0x00FF & (filterID << 3)) | (1 << 2);
-  sFilterConfig.FilterMaskIdHigh = filterMask >> 13;
-  sFilterConfig.FilterMaskIdLow = (0x00FF & (filterMask << 3)) | (1 << 2);
-  sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO0;
-  sFilterConfig.FilterActivation = ENABLE;
-  sFilterConfig.FilterBank = 0;
-  if (HAL_CAN_ConfigFilter(&hcan, &sFilterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-}
+///*----------------------------------------------------------------------------*/
+//void config_can_filter(void){
+//   CAN_FilterTypeDef sFilterConfig;
+//
+//   	   	   	   	   	   	   	  /* Leave mask bits for different messages commands
+//   	   	   	   	   	   	   	  |  	  	  	  	  	  	  	  	  	  	  	  	 */
+//   uint32_t filterMask=	RXFILTERMASK;
+//   uint32_t filterID=	RXFILTERID; // Only accept bootloader CAN message ID
+//
+//  /*##-2- Configure the CAN Filter ###########################################*/
+//  //sFilterConfig.FilterNumber = 0;
+//  sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
+//  sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
+//  sFilterConfig.FilterIdHigh = filterID >> 13;
+//  sFilterConfig.FilterIdLow = (0x00FF & (filterID << 3)) | (1 << 2);
+//  sFilterConfig.FilterMaskIdHigh = filterMask >> 13;
+//  sFilterConfig.FilterMaskIdLow = (0x00FF & (filterMask << 3)) | (1 << 2);
+//  sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO0;
+//  sFilterConfig.FilterActivation = ENABLE;
+//  sFilterConfig.FilterBank = 0;
+//  if (HAL_CAN_ConfigFilter(&hcan, &sFilterConfig) != HAL_OK)
+//  {
+//    Error_Handler();
+//  }
+//}
 
 /* Run_Application -----------------------------------------------------------*/
 /* Bootloader is done. Prepare the mcu for application-Start and finaly Start */
@@ -842,11 +838,11 @@ void send_confirm_msg(uint8_t status){
 
 	index = bl_ctrl_reg.G_index/4;
 
-	TxHeader.ExtId = 0x00FE00 + CANTX_SA;
+	TxHeader.ExtId = bl_ctrl_reg.tx_feedback_can_id;
 	TxHeader.IDE = CAN_ID_EXT;
 	TxHeader.RTR = CAN_RTR_DATA;
 	TxHeader.DLC = 4;
-	TxData[0] = 0xF6;
+	TxData[0] = BL_next_FLASH_DATA_CMD;
 	TxData[1] = status;	//0xFF = Success, 0x00 = failed
 	TxData[2] = index & 0x00FF;
 	TxData[3] = (index & 0xFF00)>>8;

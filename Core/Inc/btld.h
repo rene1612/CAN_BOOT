@@ -107,6 +107,13 @@ typedef enum
 	 uint32_t				flash_start_addr;
 	 uint32_t				flash_end_addr;
 
+	 uint32_t				rx_cmd_can_id;
+	 uint32_t				tx_feedback_can_id;
+	 uint32_t				tx_heartbeat_can_id;
+
+	 uint32_t 				can_filterMask;
+	 uint32_t 				can_filterID; // Only accept bootloader CAN message ID
+
 }_BL_CTRL_REGS_TYPE;
 
 
@@ -201,7 +208,7 @@ uint8_t btld_ConfigProtection(_FLASH_AREA_TYPE flash_area, uint32_t protection);
 
 uint8_t btld_CheckForSize(_FLASH_AREA_TYPE flash_area, uint32_t size);
 uint32_t btld_GetFlChecksum(_FLASH_AREA_TYPE flash_area);
-uint8_t btld_ValidateFlAreak(_FLASH_AREA_TYPE flash_area);
+uint8_t btld_ValidateFlArea(_FLASH_AREA_TYPE flash_area);
 uint32_t btld_CalcChecksum(uint32_t start_addr, uint32_t Length);
 
 uint8_t btld_StoreFlChecksum(_FLASH_AREA_TYPE flash_area, uint32_t checksum);
