@@ -211,6 +211,7 @@ uint32_t btld_GetFlChecksum(_FLASH_AREA_TYPE flash_area);
 uint8_t btld_ValidateFlArea(_FLASH_AREA_TYPE flash_area);
 uint32_t btld_CalcChecksum(uint32_t start_addr, uint32_t Length);
 
+uint8_t btld_SaveFlParam(void);
 uint8_t btld_StoreFlChecksum(_FLASH_AREA_TYPE flash_area, uint32_t checksum);
 uint8_t btld_SaveFlChecksum(void);
 uint8_t btld_SaveFlLength(void);

@@ -18,6 +18,7 @@
 
 #include <btld.h>
 #include "stm32f1xx_hal.h"
+#include <string.h>
 
 extern CRC_HandleTypeDef hcrc;
 
@@ -157,7 +158,7 @@ uint8_t btld_EraseFlash(_FLASH_AREA_TYPE flash_area){
 				status = BL_WRITE_ERROR;
 			}else {
 				pEraseInit.NbPages = DEV_APP_SIZE / FLASH_PAGE_SIZE;
-		        pEraseInit.PageAddress = DEV_BL_ADDRESS; //FLASH_PAGE_NBPERBANK - pEraseInit.NbPages;
+		        pEraseInit.PageAddress = DEV_APP_ADDRESS; //FLASH_PAGE_NBPERBANK - pEraseInit.NbPages;
 			}
 			break;
 
@@ -166,7 +167,7 @@ uint8_t btld_EraseFlash(_FLASH_AREA_TYPE flash_area){
 				status = BL_WRITE_ERROR;
 			}else {
 				pEraseInit.NbPages = DEV_APP_CONFIG_SIZE / FLASH_PAGE_SIZE;
-		        pEraseInit.PageAddress = DEV_BL_ADDRESS; //FLASH_PAGE_NBPERBANK - pEraseInit.NbPages;
+		        pEraseInit.PageAddress = DEV_APP_CONFIG_FL_ADDRESS; //FLASH_PAGE_NBPERBANK - pEraseInit.NbPages;
 			}
 			break;
 
@@ -175,13 +176,15 @@ uint8_t btld_EraseFlash(_FLASH_AREA_TYPE flash_area){
 				status = BL_WRITE_ERROR;
 			}else {
 				pEraseInit.NbPages = DEV_CONFIG_FL_SIZE / FLASH_PAGE_SIZE;
-		        pEraseInit.PageAddress = DEV_BL_ADDRESS; //FLASH_PAGE_NBPERBANK - pEraseInit.NbPages;
+		        pEraseInit.PageAddress = DEV_CONFIG_FL_ADDRESS; //FLASH_PAGE_NBPERBANK - pEraseInit.NbPages;
 			}
 			break;
 
 		case BL_DEV_CRC:
-			//flash_ptr = DEV_CRC_FL_ADDRESS;
-			//break;
+			pEraseInit.NbPages = DEV_CRC_FL_SIZE / FLASH_PAGE_SIZE;
+			pEraseInit.PageAddress = DEV_CRC_FL_ADDRESS; //FLASH_PAGE_NBPERBANK - pEraseInit.NbPages;
+			break;
+
 		default:
 			status = BL_ADDR_ERROR;
 			break;
@@ -603,6 +606,68 @@ uint32_t btld_GetFlChecksum(_FLASH_AREA_TYPE flash_area) {
 }
 
 
+
+/* Save checksum and length to flash crc area ----------------------------------------------------------*/
+uint8_t btld_SaveFlParam(void){
+	//uint32_t calculatedCrc = 0;
+	HAL_StatusTypeDef returnedERR=HAL_OK;
+	_DEV_CRC_REGS dev_crc_regs;
+	uint32_t* p_dev_crc_regs=(uint32_t*)&dev_crc_regs;
+	uint32_t length = 0;
+	uint32_t calculatedCrc;
+	int i;
+
+	memcpy((void*)&dev_crc_regs, (void*)pDevCRCRegs, sizeof(_DEV_CRC_REGS));
+
+	length =  (uint32_t)(bl_ctrl_reg.flash_ptr - bl_ctrl_reg.flash_start_addr);
+	calculatedCrc=btld_CalcChecksum(bl_ctrl_reg.flash_start_addr, length);
+
+ 	switch(bl_ctrl_reg.flash_area) {
+
+		case BOOTLOADER:
+			dev_crc_regs.bl_length = length;
+			dev_crc_regs.bl_crc32 = calculatedCrc;
+			break;
+
+		case APPLICATION:
+			dev_crc_regs.app_length = length;
+			dev_crc_regs.app_crc32 = calculatedCrc;
+			break;
+
+		case APPLICATION_CONFIG:
+			dev_crc_regs.app_config_length = length;
+			dev_crc_regs.app_config_crc32 = calculatedCrc;
+			break;
+
+		case DEVICE_CONFIG:
+			dev_crc_regs.dev_config_length = length;
+			dev_crc_regs.dev_config_crc32 = calculatedCrc;
+			break;
+
+		case BL_DEV_CRC:
+			//flash_ptr = DEV_CRC_FL_ADDRESS;
+			//break;
+		default:
+			return HAL_ERROR;
+	}
+
+ 	btld_EraseFlash(BL_DEV_CRC);
+
+	HAL_FLASH_Unlock();
+
+	for (i=0; i<(sizeof(_DEV_CRC_REGS)/4); i++) {
+		if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, (uint32_t)((uint32_t*)pDevCRCRegs+i), (uint64_t)p_dev_crc_regs[i] ) != HAL_OK) {
+			returnedERR=HAL_ERROR;
+			break;
+		}
+	}
+
+	HAL_FLASH_Lock();
+
+	return returnedERR;
+}
+
+
 /* Save checksum to flash ----------------------------------------------------------*/
 uint8_t btld_StoreFlChecksum(_FLASH_AREA_TYPE flash_area, uint32_t checksum){
 	//uint32_t calculatedCrc = 0;
@@ -666,7 +731,7 @@ uint8_t btld_SaveFlLength(void){
 
 	length =  (uint32_t)(bl_ctrl_reg.flash_ptr - bl_ctrl_reg.flash_start_addr);
 
-    HAL_FLASH_Unlock();
+	HAL_FLASH_Unlock();
 
  	switch(bl_ctrl_reg.flash_area) {
 

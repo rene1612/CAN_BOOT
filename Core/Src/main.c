@@ -119,9 +119,9 @@ __attribute__((__section__(".dev_crc_regs"))) const _DEV_CRC_REGS dev_crc_regs =
 		~0U,	//BL crc32
 		DEV_BL_SIZE,
 		~0U,	//APP crc32
-		0,
+		~0U,
 		~0U,	//APP_CONFIG crc32
-		0,
+		~0U,
 		~0U,	//DEV_CONFIG crc32
 		sizeof(_DEV_CONFIG_REGS),
 		BL_PROTECTION_WRP,	// BL Flash Flags
@@ -220,6 +220,7 @@ int main(void)
 	uint32_t dev_cfg_length = btld_GetFlLength(DEVICE_CONFIG);
 	uint32_t dev_cfg_cs_calc;
 
+
 	if (dev_cfg_length) {
 		dev_cfg_cs_calc = btld_CalcChecksum(DEV_CONFIG_FL_ADDRESS, dev_cfg_length);
 	}
@@ -290,22 +291,21 @@ int main(void)
 
 		/* Erase Flash */
 		if(bl_ctrl_reg.loader_cmd == BL_erease_FLASH_CMD){
-
 			if(btld_EraseFlash(bl_ctrl_reg.flash_area)==HAL_OK){
 				/* Erase Success */
 				//Send CAN message to know we are in loader mode
-				TxData[0]=BL_erease_FLASH_CMD;
+				TxData[2]=0xFF;
 			}else{
 				/* Erase failed */
 				//Send CAN message to know we are in loader mode
-				TxData[0]=0xFF;
+				TxData[2]=0x0F;
 			}
-
+			TxData[0]=BL_erease_FLASH_CMD;
 			TxData[1]=bl_ctrl_reg.flash_area;
 			TxHeader.ExtId=bl_ctrl_reg.tx_feedback_can_id;
 			TxHeader.IDE=CAN_ID_EXT;
 			TxHeader.RTR=CAN_RTR_DATA;
-			TxHeader.DLC=2;
+			TxHeader.DLC=3;
 
 			HAL_CAN_AddTxMessage(&hcan,&TxHeader,TxData,&TxMailbox);
 
@@ -350,10 +350,10 @@ int main(void)
 		if (bl_ctrl_reg.loader_cmd == BL_start_FLASH_CMD) {
 
 			if (btld_FlashBegin(bl_ctrl_reg.flash_area) == BL_OK) {
-				TxData[1]=0xFF;	//Success
+				TxData[2]=0xFF;	//Success
 				led_state = 4;
 			} else {
-				TxData[1]=0x00;	//Error
+				TxData[2]=0x0F;	//Error
 				//led_state = err; (todo)
 			}
 			//bl_ctrl_reg.FlashInProgress = 1;
@@ -365,24 +365,27 @@ int main(void)
 			TxHeader.RTR=CAN_RTR_DATA;
 			TxHeader.DLC=3;
 			TxData[0]=BL_start_FLASH_CMD;
-			TxData[2]=bl_ctrl_reg.flash_area;
+			TxData[1]=bl_ctrl_reg.flash_area;
 
 			HAL_CAN_AddTxMessage(&hcan,&TxHeader,TxData,&TxMailbox);
 
 			bl_ctrl_reg.loader_cmd=0;
 		}
 
-		/* End Falshing and respond success */
+		/* End Falshing and respond success/error */
 		if (bl_ctrl_reg.loader_cmd == BL_done_FLASH_CMD  && bl_ctrl_reg.FlashInProgress){
-
 			btld_FlashEnd();
 			//store permanently to crc-flash area
-			btld_SaveFlLength();
-			btld_SaveFlChecksum();
+			if (btld_SaveFlParam() == HAL_OK) {
+				TxData[2]=0xFF;	//Success
+				led_state = 1;
+			} else {
+				TxData[2]=0x0F;	//Success
+				led_state = 3;
+			}
 
 			bl_ctrl_reg.FlashInProgress=0;
 			bl_ctrl_reg.loader_cmd=0;
-			led_state = 1;
 
 			// request next WORD
 			/* Send success */
@@ -391,8 +394,7 @@ int main(void)
 			TxHeader.RTR=CAN_RTR_DATA;
 			TxHeader.DLC=3;
 			TxData[0]=BL_done_FLASH_CMD;
-			TxData[1]=0xFF;	//Success
-			TxData[2]=bl_ctrl_reg.flash_area;
+			TxData[1]=bl_ctrl_reg.flash_area;
 
 			HAL_CAN_AddTxMessage(&hcan,&TxHeader,TxData,&TxMailbox);
 		}
