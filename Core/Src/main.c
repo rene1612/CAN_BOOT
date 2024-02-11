@@ -276,8 +276,8 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 
   if (*(uint32_t *)_MAGIC_RAM_ADDRESS_ == _MAGIC_RAM_DWORD_) {
-	  //we have an app based bootevent
-	  *(uint32_t *)_MAGIC_RAM_ADDRESS_ = 0;
+	  //we have an app based bootevent stay in bootloader and don´t run app
+	  *(uint32_t *)_MAGIC_RAM_ADDRESS_ = 0U;
 	  bl_ctrl_reg.loader_mode=1;
   }
 

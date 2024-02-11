@@ -118,10 +118,12 @@ typedef enum
 
 
 /**
- * @struct	REG
+ * @struct	_DEV_CRC_REGS
  * @brief	Dev-Config stuct.
  *
- * @note	Der Registersatz wird im Flash gehalten
+ * @note	be aware when modifying this struct, we need a 4 Byte alignment, otherwise the copycode  will fail
+ * @see		btld_SaveFlParam()
+
  */
  typedef struct
  {

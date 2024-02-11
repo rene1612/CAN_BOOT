@@ -609,7 +609,7 @@ uint32_t btld_GetFlChecksum(_FLASH_AREA_TYPE flash_area) {
 
 /* Save checksum and length to flash crc area ----------------------------------------------------------*/
 uint8_t btld_SaveFlParam(void){
-	//uint32_t calculatedCrc = 0;
+
 	HAL_StatusTypeDef returnedERR=HAL_OK;
 	_DEV_CRC_REGS dev_crc_regs;
 	uint32_t* p_dev_crc_regs=(uint32_t*)&dev_crc_regs;
@@ -617,11 +617,14 @@ uint8_t btld_SaveFlParam(void){
 	uint32_t calculatedCrc;
 	int i;
 
+	//copy crc flash mem to temp ram variable before ereasing flash
 	memcpy((void*)&dev_crc_regs, (void*)pDevCRCRegs, sizeof(_DEV_CRC_REGS));
 
+	//get and calc the new parameters for the spezefic flash area
 	length =  (uint32_t)(bl_ctrl_reg.flash_ptr - bl_ctrl_reg.flash_start_addr);
 	calculatedCrc=btld_CalcChecksum(bl_ctrl_reg.flash_start_addr, length);
 
+	//set the new params in the temp ram struct
  	switch(bl_ctrl_reg.flash_area) {
 
 		case BOOTLOADER:
@@ -651,10 +654,13 @@ uint8_t btld_SaveFlParam(void){
 			return HAL_ERROR;
 	}
 
+ 	//erease the flash page that holds the dev crc and length params
  	btld_EraseFlash(BL_DEV_CRC);
 
 	HAL_FLASH_Unlock();
 
+	//write back the updated, temp ram struct to dev crc flash
+	//@note: be aware when modifying the dev crc struct, we need a 4 Byte alignment, otherwise the copycode below will fail
 	for (i=0; i<(sizeof(_DEV_CRC_REGS)/4); i++) {
 		if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, (uint32_t)((uint32_t*)pDevCRCRegs+i), (uint64_t)p_dev_crc_regs[i] ) != HAL_OK) {
 			returnedERR=HAL_ERROR;
