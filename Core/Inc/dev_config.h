@@ -59,7 +59,7 @@
 /******************************************************************************/
 /* Defines -------------------------------------------------------------------*/
 #define DEFAULT_ALIVE_TIMEOUT_10MS	15
-#define DEAULT_BL_CAN_BITRATE		_125_Kbit
+#define DEAULT_BL_CAN_BITRATE		_500_Kbit
 #define DEAULT_APP_CAN_BITRATE		_500_Kbit
 
 #define __DEV_ID__					0x8F
