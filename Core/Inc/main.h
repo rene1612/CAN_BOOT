@@ -74,10 +74,10 @@ void Error_Handler(void);
 
 #define __DEV_SIGNATURE__			0x12
 #define __SW_RELEASE__				0x0100
-#define SW_RELEASE_DAY				12
-#define SW_RELEASE_MONTH			12
-#define SW_RELEASE_YEAR				2023
-#define __SW_RELEASE_DATE__			((SW_RELEASE_DAY<<24 ) | (SW_RELEASE_MONTH<<18) | SW_RELEASE_YEAR)
+#define SW_RELEASE_DAY				14
+#define SW_RELEASE_MONTH			02
+#define SW_RELEASE_YEAR				2024
+#define __SW_RELEASE_DATE__			((SW_RELEASE_DAY<<24 ) | (SW_RELEASE_MONTH<<16) | SW_RELEASE_YEAR)
 
 
 

@@ -62,12 +62,12 @@
 #define DEAULT_BL_CAN_BITRATE		_500_Kbit
 #define DEAULT_APP_CAN_BITRATE		_500_Kbit
 
-#define __DEV_ID__					0x8F
+#define __DEV_ID__					0x3F
 #define __BOARD_VERSION__			0x0100
-#define BOARD_MF_DAY				8
-#define BOARD_MF_MONTH				12
-#define BOARD_MF_YEAR				2023
-#define __BOARD_MF_DATE__			((BOARD_MF_DAY<<24 ) | (BOARD_MF_MONTH<<18) | BOARD_MF_YEAR)
+#define BOARD_MF_DAY				14
+#define BOARD_MF_MONTH				02
+#define BOARD_MF_YEAR				2024
+#define __BOARD_MF_DATE__			((BOARD_MF_DAY<<24 ) | (BOARD_MF_MONTH<<16) | BOARD_MF_YEAR)
 
 
 typedef enum
