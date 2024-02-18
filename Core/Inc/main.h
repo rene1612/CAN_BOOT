@@ -45,6 +45,42 @@ extern "C" {
 
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
+/**
+ * @struct	REG
+ * @brief	Registersatz des Controllers.
+ *
+ * @note	Der Registersatz wird im RAM und im EEProm gehalten
+ */
+ typedef struct
+ {
+/**
+ * @var	unsigned int sw_release
+ * @brief	Register mit der Softwareversion
+ * @see	__SW_RELEASE__
+ * @see	SW_REL_REG
+ * @see	config.h
+ */
+ uint16_t		sw_release;
+
+/**
+ * @var	unsigned int sw_release_date
+ * @brief	Register mit dem Datum der Softwareversion
+ * Formatierung:
+ *	- Byte 0 -> Tag
+ *	- BYTE 1 -> Monat
+ *	- BYTE 2 -> Jahr
+ *	- BYTE 3 -> Jahr
+ * @see	__SW_RELEASE_DATE__
+ * @see	SW_REL_DATE_REG
+ * @see	config.h
+ */
+ uint32_t		sw_release_date;
+
+ uint64_t		sw_git_short_hash;
+
+ const char	sw_git_tag[16];
+}_SW_INFO_REGS;
+
 
 
 /* USER CODE END EM */
@@ -74,7 +110,7 @@ void Error_Handler(void);
 
 #define __DEV_SIGNATURE__			0x12
 #define __SW_RELEASE__				0x0100
-#define SW_RELEASE_DAY				14
+#define SW_RELEASE_DAY				18
 #define SW_RELEASE_MONTH			02
 #define SW_RELEASE_YEAR				2024
 #define __SW_RELEASE_DATE__			((SW_RELEASE_DAY<<24 ) | (SW_RELEASE_MONTH<<16) | SW_RELEASE_YEAR)

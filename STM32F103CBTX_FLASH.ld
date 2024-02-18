@@ -69,6 +69,12 @@ SECTIONS
   {
   	KEEP(*(.board_info))
   } >FLASH
+  
+  .sw_info : 
+  {
+  	KEEP(*(.sw_info))
+  } >FLASH
+  
 /* USER CODE END PD */
 
   /* The program code and other data into "FLASH" Rom type memory */

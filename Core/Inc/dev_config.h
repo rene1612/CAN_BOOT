@@ -55,21 +55,6 @@
 #endif
 
 
-
-/******************************************************************************/
-/* Defines -------------------------------------------------------------------*/
-#define DEFAULT_ALIVE_TIMEOUT_10MS	15
-#define DEAULT_BL_CAN_BITRATE		_500_Kbit
-#define DEAULT_APP_CAN_BITRATE		_500_Kbit
-
-#define __DEV_ID__					0x3F
-#define __BOARD_VERSION__			0x0100
-#define BOARD_MF_DAY				14
-#define BOARD_MF_MONTH				02
-#define BOARD_MF_YEAR				2024
-#define __BOARD_MF_DATE__			((BOARD_MF_DAY<<24 ) | (BOARD_MF_MONTH<<16) | BOARD_MF_YEAR)
-
-
 typedef enum
 {
 	BMS_BLK_BOARD					= 0x10,
@@ -87,6 +72,23 @@ typedef enum
 	_20_Kbit					= 450,
 	_10_Kbit					= 900,
 }_CAN_BIT_RATE;
+
+
+/******************************************************************************/
+/* Defines -------------------------------------------------------------------*/
+#define DEFAULT_ALIVE_TIMEOUT_10MS	15
+#define DEAULT_BL_CAN_BITRATE		_500_Kbit
+#define DEAULT_APP_CAN_BITRATE		_500_Kbit
+
+#define __DEV_ID__					0xAF
+#define __BOARD_VERSION__			0x0100
+#define __BOARD_TYPE__				((_BOARD_TYPE)BMS_MEASURE_BOARD)
+#define BOARD_MF_DAY				7
+#define BOARD_MF_MONTH				9
+#define BOARD_MF_YEAR				2023
+#define __BOARD_MF_DATE__			((BOARD_MF_DAY<<24 ) | (BOARD_MF_MONTH<<16) | BOARD_MF_YEAR)
+
+
 
 
 #pragma pack(push,1)

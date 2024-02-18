@@ -106,9 +106,16 @@ Bootloader version 1.0.0 CRC32 = 0xC2106B18
 /* USER CODE BEGIN PV */
 __attribute__((__section__(".board_info"))) const unsigned char BOARD_NAME[10] = "BOOT";
 
+__attribute__((__section__(".sw_info"))) const _SW_INFO_REGS sw_info_regs = {
+  		__SW_RELEASE__,
+  		__SW_RELEASE_DATE__,
+  		0x0000000000000000,
+  		"no tag"
+  };
+
 __attribute__((__section__(".dev_config"))) const _DEV_CONFIG_REGS dev_config_regs = {
 		__DEV_ID__,
-		BMS_BLK_BOARD,
+		__BOARD_TYPE__,
 		__BOARD_VERSION__,
 		DEAULT_BL_CAN_BITRATE,
 		DEAULT_APP_CAN_BITRATE,
