@@ -109,7 +109,7 @@ __attribute__((__section__(".board_info"))) const unsigned char BOARD_NAME[10] =
 __attribute__((__section__(".sw_info"))) const _SW_INFO_REGS sw_info_regs = {
   		__SW_RELEASE__,
   		__SW_RELEASE_DATE__,
-  		0x0000000000000000,
+  		0x4145f94ae5831096,
   		"no tag"
   };
 
@@ -225,7 +225,7 @@ int main(void)
 	uint32_t bl_cs_calc=btld_CalcChecksum(DEV_BL_ADDRESS, DEV_BL_SIZE);
 	uint32_t dev_cfg_cs_fl=btld_GetFlChecksum(DEVICE_CONFIG);
 	uint32_t dev_cfg_length = btld_GetFlLength(DEVICE_CONFIG);
-	uint32_t dev_cfg_cs_calc;
+	uint32_t dev_cfg_cs_calc = ~0U;
 
 
 	if (dev_cfg_length) {
