@@ -80,7 +80,7 @@ typedef enum
 #define DEAULT_BL_CAN_BITRATE		_500_Kbit
 #define DEAULT_APP_CAN_BITRATE		_500_Kbit
 
-#define __DEV_ID__					0x7F
+#define __DEV_ID__					0x1F
 #define __BOARD_VERSION__			0x0100
 #define __BOARD_TYPE__				((_BOARD_TYPE)BMS_MEASURE_BOARD)
 #define BOARD_MF_DAY				7
