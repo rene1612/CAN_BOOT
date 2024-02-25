@@ -145,6 +145,7 @@ const _DEV_CRC_REGS* pDevCRCRegs = (const _DEV_CRC_REGS*)&dev_crc_regs;
 
 uint8_t led_state = 1;
 uint8_t G_LedUpdate=0;
+uint8_t wait_counter=0;
 
 _BL_CTRL_REGS_TYPE bl_ctrl_reg;
 
@@ -578,13 +579,23 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			/* Output Write ----------------------------------------------*/
 			if(bl_ctrl_reg.loader_mode){
 				//Send CAN message to know we are in loader mode
-				TxHeader.ExtId=bl_ctrl_reg.tx_heartbeat_can_id;
-				TxHeader.IDE=CAN_ID_EXT;
-				TxHeader.RTR=CAN_RTR_DATA;
-				TxHeader.DLC=1;
-				TxData[0]=0xFF;
 
-				HAL_CAN_AddTxMessage(&hcan,&TxHeader,TxData,&TxMailbox);
+				if (HAL_CAN_IsTxMessagePending(&hcan, TxMailbox) == 0) {
+					TxHeader.ExtId=bl_ctrl_reg.tx_heartbeat_can_id;
+					TxHeader.IDE=CAN_ID_EXT;
+					TxHeader.RTR=CAN_RTR_DATA;
+					TxHeader.DLC=1;
+					TxData[0]=0xFF;
+					HAL_CAN_AddTxMessage(&hcan,&TxHeader,TxData,&TxMailbox);
+				}
+				else {
+
+					wait_counter++;
+					if(wait_counter>10){
+						HAL_CAN_AbortTxRequest(&hcan, TxMailbox);
+						wait_counter=0;
+					}
+				}
 			}
 			/*---------------------------------------------- Output Write */
 
