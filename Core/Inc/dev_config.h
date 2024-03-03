@@ -81,7 +81,7 @@ typedef enum
 #define DEAULT_APP_CAN_BITRATE		(_CAN_BIT_RATE)_500_Kbit
 
 #ifndef __DEV_ID__
-	#define __DEV_ID__					0x2F
+	#define __DEV_ID__					0x3F
 #endif
 
 #ifndef __BOARD_VERSION__
