@@ -59,6 +59,7 @@ typedef enum
 {
 	BMS_BLK_BOARD					= 0x10,
 	BMS_MEASURE_BOARD				= 0x20,
+	BMS_BALANCE_BOARD				= 0x30,
 }_BOARD_TYPE;
 
 
@@ -81,7 +82,7 @@ typedef enum
 #define DEAULT_APP_CAN_BITRATE		(_CAN_BIT_RATE)_500_Kbit
 
 #ifndef __DEV_ID__
-	#define __DEV_ID__					0x3F
+	#define __DEV_ID__					0x7F
 #endif
 
 #ifndef __BOARD_VERSION__
@@ -90,6 +91,7 @@ typedef enum
 
 #ifndef __BOARD_TYPE__
 //	#define __BOARD_TYPE__				((_BOARD_TYPE)BMS_MEASURE_BOARD)
+//	#define __BOARD_TYPE__				((_BOARD_TYPE)BMS_BALANCE_BOARD)
 	#define __BOARD_TYPE__				((_BOARD_TYPE)BMS_BLK_BOARD)
 #endif
 
@@ -99,8 +101,6 @@ typedef enum
 	#define BOARD_MF_YEAR				2023
 	#define __BOARD_MF_DATE__			((BOARD_MF_DAY<<24 ) | (BOARD_MF_MONTH<<16) | BOARD_MF_YEAR)
 #endif
-
-
 
 
 #pragma pack(push,1)
