@@ -55,6 +55,10 @@
 #endif
 
 
+#ifndef __DEBUG__
+ #define __DEBUG__
+#endif
+
 typedef enum
 {
 	BMS_BLK_BOARD					= 0x10,
@@ -66,13 +70,54 @@ typedef enum
 typedef enum
 {
 	_1000_Kbit					= 9,
-	_500_Kbit					= 18,
+	_500_Kbit					= 8,
 	_250_Kbit					= 36,
 	_125_Kbit					= 72,
 	_50_Kbit					= 180,
 	_20_Kbit					= 450,
 	_10_Kbit					= 900,
 }_CAN_BIT_RATE;
+
+
+typedef enum
+{
+	ACK = 0x11,
+	NACK= 0x13
+}_REPLAY_TYPE;
+
+
+typedef enum
+{
+	NO_CMD = 0,
+	\
+	/* SYSK-COMMANDS (Boardtype: ALL) */
+	SYS_READ_REG_CMD,
+	SYS_WRITE_REG_CMD,
+	SYS_RESET_CMD,
+	SYS_APP_RESET_CMD,
+	SYS_BOOT_CMD,
+	\
+	ALIVE_CMD=6,
+	\
+	REPLAY_AKC_NACK_CMD=0x11,
+	REPLAY_DATA_CMD=0x13,
+	\
+	/* BMS-BLK-COMMANDS (Boardtype: BMS_BLK_BOARD) */
+	PB_SET_CMD = 0x20,
+	PB_SET_OE_CMD,
+	NEEY_SET_CMD,
+	\
+	/* BMS-MEASURE-COMMANDS (Boardtype: BMS_MEASURE_BOARD) */
+	ADC_OFFSET_CAL_CMD=0x40,
+	ADC_GAIN_CAL_CMD,
+	ADC_READ_REG_CMD,
+	ADC_WRITE_REG_CMD,
+	\
+	SET_RELAY_CMD=0x50,
+	GET_RELAY_CMD,
+	\
+	END_CMD
+}_CAN_CMD;
 
 
 /******************************************************************************/
