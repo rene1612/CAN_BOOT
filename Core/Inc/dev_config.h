@@ -127,7 +127,7 @@ typedef enum
 #define DEAULT_APP_CAN_BITRATE		(_CAN_BIT_RATE)_500_Kbit
 
 #ifndef __DEV_ID__
-	#define __DEV_ID__					0x7F
+	#define __DEV_ID__					0x2F
 #endif
 
 #ifndef __BOARD_VERSION__
@@ -135,9 +135,9 @@ typedef enum
 #endif
 
 #ifndef __BOARD_TYPE__
-//	#define __BOARD_TYPE__				((_BOARD_TYPE)BMS_MEASURE_BOARD)
+	#define __BOARD_TYPE__				((_BOARD_TYPE)BMS_MEASURE_BOARD)
 //	#define __BOARD_TYPE__				((_BOARD_TYPE)BMS_BALANCE_BOARD)
-	#define __BOARD_TYPE__				((_BOARD_TYPE)BMS_BLK_BOARD)
+//	#define __BOARD_TYPE__				((_BOARD_TYPE)BMS_BLK_BOARD)
 #endif
 
 #ifndef __BOARD_MF_DATE__
