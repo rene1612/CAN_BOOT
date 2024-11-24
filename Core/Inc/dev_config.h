@@ -31,7 +31,7 @@
 	#define FLASH_SIZE					(uint32_t)0x00020000	// 128kB
 
 	#define _MAGIC_RAM_ADDRESS_			(uint32_t)(SRAM_BASE + SRAM_SIZE - 4)	/* last Address of RAM as magic marker */
-	#define _MAGIC_RAM_DWORD_			0x12345678	/* Lenght of the bootloader (1KB) */
+	#define _MAGIC_RAM_DWORD_			0x12345678	/* the magic DWORD */
 
 	#define DEV_BL_ADDRESS				(uint32_t)0x08000000	/* Start address of bootloader */
 	#define DEV_BL_SIZE					(uint32_t)0x00008000	/* Lenght of the bootloader (32KB) */
@@ -126,18 +126,37 @@ typedef enum
 #define DEAULT_BL_CAN_BITRATE		(_CAN_BIT_RATE)_500_Kbit
 #define DEAULT_APP_CAN_BITRATE		(_CAN_BIT_RATE)_500_Kbit
 
-#ifndef __DEV_ID__
-	#define __DEV_ID__					0x2F
-#endif
 
 #ifndef __BOARD_VERSION__
 	#define __BOARD_VERSION__			(0x0100)
 #endif
 
 #ifndef __BOARD_TYPE__
-	#define __BOARD_TYPE__				((_BOARD_TYPE)BMS_MEASURE_BOARD)
-//	#define __BOARD_TYPE__				((_BOARD_TYPE)BMS_BALANCE_BOARD)
-//	#define __BOARD_TYPE__				((_BOARD_TYPE)BMS_BLK_BOARD)
+//	#define __BOARD_TYPE__				BMS_MEASURE_BOARD
+//	#define __BOARD_TYPE__				BMS_BALANCE_BOARD
+	#define __BOARD_TYPE__				BMS_BLK_BOARD
+#endif
+
+#ifndef __BRD_ID__
+	#define __BRD_ID__					0x01
+#endif
+
+#ifndef __DEV_ID__
+	#define __DEV_ID__					(__BOARD_TYPE__ + __BRD_ID__)
+#endif
+
+//#define __BOARD_NAME__ "BMS_BLK_BOARD"
+
+#ifndef __BOARD_NAME__
+	#if (__BOARD_TYPE__ == BMS_BLK_BOARD)
+		#define __BOARD_NAME__  "BMS_BLK_BOARD"
+	#elif (__BOARD_TYPE__ == BMS_MEASURE_BOARD)
+		#define __BOARD_NAME__  "BMS_MEASURE_BOARD"
+	#elif (__BOARD_TYPE__ == BMS_BALANCE_BOARD)
+		#define __BOARD_NAME__  "BMS_BALANCE_BOARD"
+	#else
+		#define __BOARD_NAME__  "NO_NAME"
+	#endif
 #endif
 
 #ifndef __BOARD_MF_DATE__
@@ -169,19 +188,9 @@ typedef enum
 
 	_BOARD_TYPE		board_type;
 
+	const char 		board_name[16];
+
 	uint16_t		board_version;
-
-	/**
-	* @var	uint32_t	can_bitrate
-	* @brief			CAN-Bitrate des Controllers (default 500000 Bit/s)
-	*/
-	_CAN_BIT_RATE	bl_can_bitrate;
-
-	/**
-	* @var	uint32_t	can_bitrate
-	* @brief			CAN-Bitrate des Controllers (default 500000 Bit/s)
-	*/
-	_CAN_BIT_RATE	app_can_bitrate;
 
 	/**
 	* @var	uint32t sw_release_date
@@ -196,6 +205,19 @@ typedef enum
 	* @see	config.h
 	*/
 	uint32_t		board_mf_date;
+
+	/**
+	* @var	uint32_t	can_bitrate
+	* @brief			CAN-Bitrate des Controllers (default 500000 Bit/s)
+	*/
+	_CAN_BIT_RATE	bl_can_bitrate;
+
+	/**
+	* @var	uint32_t	can_bitrate
+	* @brief			CAN-Bitrate des Controllers (default 500000 Bit/s)
+	*/
+	_CAN_BIT_RATE	app_can_bitrate;
+
  }_DEV_CONFIG_REGS;
 
 #pragma pack(pop)

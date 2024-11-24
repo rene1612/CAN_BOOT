@@ -49,7 +49,7 @@
 		0x801F800 -> +-------------+
 					 | 0x801F000   |	\
 					 |    to       |	 \
-					 | 0x801F7FF   |	  |- Applicaton Configdata (Tempsensor ID-Lookup table,
+					 | 0x801F7FF   |	  |- Applicaton Configdata (Tempsensor ID-Lookup table, Calibration-Data, Thresholds, ...)
 					 |   2 KB      |	 /
 					 | data        |	/
 		0x801F000 -> +-------------+
@@ -104,22 +104,25 @@ Bootloader version 1.0.0 CRC32 = 0xC2106B18
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-__attribute__((__section__(".board_info"))) const unsigned char BOARD_NAME[10] = "BOOT";
+
+__attribute__((__section__(".board_info"))) const unsigned char BOARD_NAME[16] = __BOARD_NAME__;
 
 __attribute__((__section__(".sw_info"))) const _SW_INFO_REGS sw_info_regs = {
+		__SW_NAME__,
   		__SW_RELEASE__,
   		__SW_RELEASE_DATE__,
-  		0x4145f94ae5831096,
+  		0x0460a0368be73d3c,
   		"no tag"
   };
 
 __attribute__((__section__(".dev_config"))) const _DEV_CONFIG_REGS dev_config_regs = {
 		__DEV_ID__,
 		__BOARD_TYPE__,
+		__BOARD_NAME__,
 		__BOARD_VERSION__,
+		__BOARD_MF_DATE__,
 		DEAULT_BL_CAN_BITRATE,
-		DEAULT_APP_CAN_BITRATE,
-		__BOARD_MF_DATE__
+		DEAULT_APP_CAN_BITRATE
 };
 
 __attribute__((__section__(".dev_crc_regs"))) const _DEV_CRC_REGS dev_crc_regs = {
@@ -592,7 +595,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 					wait_counter++;
 					if(wait_counter>10){
-						HAL_CAN_AbortTxRequest(&hcan, TxMailbox);
+ 						HAL_CAN_AbortTxRequest(&hcan, TxMailbox);
 						wait_counter=0;
 					}
 				}
