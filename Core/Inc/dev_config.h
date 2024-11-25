@@ -174,6 +174,43 @@ typedef enum
 
 
 #pragma pack(push,1)
+/**
+ * @struct	REG
+ * @brief	Registersatz des Controllers.
+ *
+ * @note	Der Registersatz wird im RAM und im EEProm gehalten
+ */
+ typedef struct
+ {
+  const char 	sw_name[20];
+
+/**
+ * @var	unsigned int sw_release
+ * @brief	Register mit der Softwareversion
+ * @see	__SW_RELEASE__
+ * @see	SW_REL_REG
+ * @see	config.h
+ */
+ uint16_t		sw_release;
+
+/**
+ * @var	unsigned int sw_release_date
+ * @brief	Register mit dem Datum der Softwareversion
+ * Formatierung:
+ *	- Byte 0 -> Tag
+ *	- BYTE 1 -> Monat
+ *	- BYTE 2 -> Jahr
+ *	- BYTE 3 -> Jahr
+ * @see	__SW_RELEASE_DATE__
+ * @see	SW_REL_DATE_REG
+ * @see	config.h
+ */
+ uint32_t		sw_release_date;
+
+ uint64_t		sw_git_short_hash;
+
+ const char		sw_git_tag[20];
+}_SW_INFO_REGS;
 
 /**
  * @struct	_DEV_CONFIG_REGS
