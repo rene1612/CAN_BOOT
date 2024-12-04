@@ -28,6 +28,16 @@
 #include <stdio.h>
 #include <math.h>
 #include "dev_config.h"
+
+#if __has_include("gitcommit.h")
+	#include "gitcommit.h"
+#else
+	#define __GIT_SHORT_HASH__ 0x0000000
+	#define __GIT_BRANCH__ "none"
+	#define __GIT_DATE_STR__ "2024-11-25"
+	#define __GIT_DATE_UT__ 1732571756
+#endif
+
 /* Includes ------------------------------------------------------------------*/
 
 /*
@@ -105,15 +115,25 @@ Bootloader version 1.0.0 CRC32 = 0xC2106B18
 
 /* USER CODE BEGIN PV */
 
-__attribute__((__section__(".board_info"))) const unsigned char BOARD_NAME[16] = __BOARD_NAME__;
+__attribute__((__section__(".board_info"))) const unsigned char BOARD_NAME[20] = __BOARD_NAME__;
 
 __attribute__((__section__(".sw_info"))) const _SW_INFO_REGS sw_info_regs = {
 		__SW_NAME__,
-  		__SW_RELEASE__,
-  		__SW_RELEASE_DATE__,
-  		0x0460a0368be73d3c,
-  		"no tag"
+	#ifdef __DEBUG__
+		"Debug",
+	#else
+		"Release",
+	#endif
+		__SW_RELEASE__,
+		__SW_RELEASE_DATE__,
+		{	//git-info aus gitcommit.h
+			__GIT_SHORT_HASH__,
+			__GIT_DATE_UT__,
+			__GIT_DATE_STR__,
+			__GIT_BRANCH__,
+		}
   };
+
 
 __attribute__((__section__(".dev_config"))) const _DEV_CONFIG_REGS dev_config_regs = {
 		__DEV_ID__,
@@ -122,8 +142,11 @@ __attribute__((__section__(".dev_config"))) const _DEV_CONFIG_REGS dev_config_re
 		__BOARD_VERSION__,
 		__BOARD_MF_DATE__,
 		DEAULT_BL_CAN_BITRATE,
-		DEAULT_APP_CAN_BITRATE
+		DEAULT_APP_CAN_BITRATE,
+		DEAULT_TRIPP_CAN_ID,
+		DEAULT_BROADCAST_CAN_ID
 };
+
 
 __attribute__((__section__(".dev_crc_regs"))) const _DEV_CRC_REGS dev_crc_regs = {
 		~0U,	//BL crc32
@@ -301,7 +324,7 @@ int main(void)
 	if(bl_ctrl_reg.loader_mode){
 
 		/* Erase Flash */
-		if(bl_ctrl_reg.loader_cmd == BL_erease_FLASH_CMD){
+		if(bl_ctrl_reg.loader_cmd == BL_erase_FLASH_CMD){
 			if(btld_EraseFlash(bl_ctrl_reg.flash_area)==HAL_OK){
 				/* Erase Success */
 				//Send CAN message to know we are in loader mode
@@ -311,7 +334,7 @@ int main(void)
 				//Send CAN message to know we are in loader mode
 				TxData[2]=0x0F;
 			}
-			TxData[0]=BL_erease_FLASH_CMD;
+			TxData[0]=BL_erase_FLASH_CMD;
 			TxData[1]=bl_ctrl_reg.flash_area;
 			TxHeader.ExtId=bl_ctrl_reg.tx_feedback_can_id;
 			TxHeader.IDE=CAN_ID_EXT;
@@ -675,10 +698,10 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef* phcan)
 				break;
 
 			/* erease flash cmd ----------------------------------------------*/
-			case BL_erease_FLASH_CMD:
+			case BL_erase_FLASH_CMD:
 				if(bl_ctrl_reg.loader_mode){
 					bl_ctrl_reg.flash_area=data[1];
-					bl_ctrl_reg.loader_cmd=BL_erease_FLASH_CMD;
+					bl_ctrl_reg.loader_cmd=BL_erase_FLASH_CMD;
 				}
 				break;
 

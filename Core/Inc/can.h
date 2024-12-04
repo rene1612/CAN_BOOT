@@ -40,7 +40,7 @@ extern CAN_HandleTypeDef hcan;
 typedef enum
 {
 	BL_XXX_CMD						= 0xF0,
-	BL_erease_FLASH_CMD				= 0xF1,
+	BL_erase_FLASH_CMD				= 0xF1,
 	BL_run_APP_CMD 					= 0xF2,
 	BL_ask_for_FLASH_space_CMD		= 0xF3,
 	BL_ask_for_CRC_CMD				= 0xF4,

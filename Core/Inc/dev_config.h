@@ -24,40 +24,36 @@
 /*** Bootloader Configuration *************************************************/
 #if defined(STM32F103x6) || defined(STM32F103xB) || defined(STM32F103xE) || defined(STM32F103xG)
 
-	#define SYSMEM_ADDRESS				(uint32_t)0x1FFFF000    /* Address of System Memory (ST Bootloader) */
+	#define SYSMEM_ADDRESS				(uint32_t)0x1FFFF000UL    /* Address of System Memory (ST Bootloader) */
 
 	/* MCU RAM size, used for checking accurately whether flash contains valid application */
-	#define SRAM_SIZE					(uint32_t)0x00005000	// 20 kB
-	#define FLASH_SIZE					(uint32_t)0x00020000	// 128kB
+	#define SRAM_SIZE					(uint32_t)0x00005000UL	// 20 kB
+	#define FLASH_SIZE					(uint32_t)0x00020000UL	// 128kB
 
 	#define _MAGIC_RAM_ADDRESS_			(uint32_t)(SRAM_BASE + SRAM_SIZE - 4)	/* last Address of RAM as magic marker */
 	#define _MAGIC_RAM_DWORD_			0x12345678	/* the magic DWORD */
 
-	#define DEV_BL_ADDRESS				(uint32_t)0x08000000	/* Start address of bootloader */
-	#define DEV_BL_SIZE					(uint32_t)0x00008000	/* Lenght of the bootloader (32KB) */
+	#define DEV_BL_ADDRESS				(uint32_t)0x08000000UL	/* Start address of bootloader */
+	#define DEV_BL_SIZE					(uint32_t)0x00008000UL	/* Lenght of the bootloader (32KB) */
 
-	#define DEV_APP_ADDRESS				(uint32_t)0x08008000    /* Start address of application space in flash */
+	#define DEV_APP_ADDRESS				(uint32_t)0x08008000UL    /* Start address of application space in flash */
 	//#define DEV_APP_END_ADDRESS			(uint32_t)0x0801EFFF    /* End address of application space (addr. of last byte) */
 	//#define DEV_APP_SIZE				(uint32_t)(((DEV_APP_END_ADDRESS - DEV_APP_ADDRESS) + 1)) /* Size of application in DWORD (32bits or 4bytes) */
-	#define DEV_APP_SIZE				(uint32_t)0x00017000 	/* Size of application in DWORD (32bits or 4bytes) */
+	#define DEV_APP_SIZE				(uint32_t)0x00017000UL 	/* Size of application in DWORD (32bits or 4bytes) */
 
-	#define DEV_APP_CONFIG_FL_ADDRESS	(uint32_t)0x0801F000	/* Start address of app-config */
-	#define DEV_APP_CONFIG_SIZE			(uint32_t)0x00000800	/* Lenght of the app-config (2KB) */
+	#define DEV_APP_CONFIG_FL_ADDRESS	(uint32_t)0x0801F000UL	/* Start address of app-config */
+	#define DEV_APP_CONFIG_SIZE			(uint32_t)0x00000800UL	/* Lenght of the app-config (2KB) */
 
-	#define DEV_CONFIG_FL_ADDRESS		(uint32_t)0x0801F800	/* Start address of config */
-	#define DEV_CONFIG_FL_SIZE			(uint32_t)0x00000400	/* Lenght of the bootloader (1KB) */
+	#define DEV_CONFIG_FL_ADDRESS		(uint32_t)0x0801F800UL	/* Start address of config */
+	#define DEV_CONFIG_FL_SIZE			(uint32_t)0x00000400UL	/* Lenght of the bootloader (1KB) */
 
-	#define DEV_CRC_FL_ADDRESS			(uint32_t)0x0801FC00	/* Start address of crc flash area */
-	#define DEV_CRC_FL_SIZE				(uint32_t)0x00000400	/* Lenght of the crc flash area (1KB) */
+	#define DEV_CRC_FL_ADDRESS			(uint32_t)0x0801FC00UL	/* Start address of crc flash area */
+	#define DEV_CRC_FL_SIZE				(uint32_t)0x00000400UL	/* Lenght of the crc flash area (1KB) */
 
 #else
 	#error"WRONG MCU for project"
 #endif
 
-
-#ifndef __DEBUG__
- #define __DEBUG__
-#endif
 
 typedef enum
 {
@@ -91,13 +87,14 @@ typedef enum
 	NO_CMD = 0,
 	\
 	/* SYSK-COMMANDS (Boardtype: ALL) */
-	SYS_READ_REG_CMD,
-	SYS_WRITE_REG_CMD,
 	SYS_RESET_CMD,
 	SYS_APP_RESET_CMD,
 	SYS_BOOT_CMD,
 	\
 	ALIVE_CMD=6,
+	\
+	SYS_WRITE_REG_CMD,
+	SYS_READ_REG_CMD,
 	\
 	REPLAY_AKC_NACK_CMD=0x11,
 	REPLAY_DATA_CMD=0x13,
@@ -106,6 +103,7 @@ typedef enum
 	PB_SET_CMD = 0x20,
 	PB_SET_OE_CMD,
 	NEEY_SET_CMD,
+	NEEY_GET_INFO_CMD,
 	BMS_GET_CELL_DATA_CMD,
 	BMS_GET_BLK_DATA_CMD,
 	BMS_GET_NEEY_DATA_CMD,
@@ -116,11 +114,16 @@ typedef enum
 	ADC_GAIN_CAL_CMD,
 	ADC_READ_REG_CMD,
 	ADC_WRITE_REG_CMD,
+	BMSM_GET_ALL_DATA_CMD=0x48,
+	BMSM_GET_SINGLE_DATA_CMD,
+	BMSM_GET_VOLTAGE_DATA_CMD,
+	BMSM_GET_CURRENT_DATA_CMD,
 	\
 	SET_RELAY_CMD=0x50,
 	GET_RELAY_CMD,
 	\
-	SYS_ALLERT_MSG=0xAA,
+	SYS_ALERT_MSG=0xAA,
+	SYS_WARN_MSG=0xAB,
 	\
 	END_CMD
 }_CAN_CMD;
@@ -133,37 +136,28 @@ typedef enum
 #define DEAULT_APP_CAN_BITRATE		(_CAN_BIT_RATE)_500_Kbit
 
 
-#ifndef __BOARD_VERSION__
-	#define __BOARD_VERSION__			(0x0100)
-#endif
 
-#ifndef __BOARD_TYPE__
-//	#define __BOARD_TYPE__				BMS_MEASURE_BOARD
-//	#define __BOARD_TYPE__				BMS_BALANCE_BOARD
-	#define __BOARD_TYPE__				BMS_BLK_BOARD
-#endif
 
-#ifndef __BRD_ID__
-	#define __BRD_ID__					0x01
-#endif
+#define DEAULT_TRIPP_CAN_ID			(BMS_MEASURE_BOARD + 1)
+#define DEAULT_BROADCAST_CAN_ID		0x7F
 
-#ifndef __DEV_ID__
-	#define __DEV_ID__					(__BOARD_TYPE__ + __BRD_ID__)
-#endif
+//#define __BOARD_NAME__ "BMS_MEASURE_BOARD"
 
-//#define __BOARD_NAME__ "BMS_BLK_BOARD"
-
-#ifndef __BOARD_NAME__
-	#if (__BOARD_TYPE__ == BMS_BLK_BOARD)
-		#define __BOARD_NAME__  "BMS_BLK_BOARD"
-	#elif (__BOARD_TYPE__ == BMS_MEASURE_BOARD)
-		#define __BOARD_NAME__  "BMS_MEASURE_BOARD"
-	#elif (__BOARD_TYPE__ == BMS_BALANCE_BOARD)
-		#define __BOARD_NAME__  "BMS_BALANCE_BOARD"
-	#else
-		#define __BOARD_NAME__  "NO_NAME"
-	#endif
-#endif
+//#ifndef __BOARD_NAME__
+//	#if (__BOARD_TYPE__) == (BMS_BLK_BOARD)
+//		#define __BOARD_NAME__  "BMS_BLK_BOARD"
+//	#else
+//		#if (__BOARD_TYPE__) == (BMS_MEASURE_BOARD)
+//			#define __BOARD_NAME__  "BMS_MEASURE_BOARD"
+//		#else
+//			#if (__BOARD_TYPE__) == BMS_BALANCE_BOARD
+//				#define __BOARD_NAME__  "BMS_BALANCE_BOARD"
+//			#else
+//				#define __BOARD_NAME__  "NO_NAME"
+//			#endif
+//		#endif
+//	#endif
+//#endif
 
 #ifndef __BOARD_MF_DATE__
 	#define BOARD_MF_DAY				7
@@ -174,6 +168,22 @@ typedef enum
 
 
 #pragma pack(push,1)
+
+/**
+ * @struct	_GIT_INFO_STRUCT
+ * @brief	Git Informationen aus dem letzen Commit (Head).
+ *
+ * @note
+ * @see		gitcommit.h
+ */
+ typedef struct
+ {
+	 uint32_t		short_hash;
+	 uint32_t		unix_time_stamp;
+	 const char 	date_str[12];
+	 const char 	info_tag_branch[64];
+ }_GIT_INFO_STRUCT;
+
 /**
  * @struct	REG
  * @brief	Registersatz des Controllers.
@@ -182,16 +192,16 @@ typedef enum
  */
  typedef struct
  {
-  const char 	sw_name[20];
+  const char 		sw_name[20];
+  const char		sw_configuration[10];	//DEBUG/RELEASE
 
 /**
- * @var	unsigned int sw_release
+ * @var	uint16_t  sw_release
  * @brief	Register mit der Softwareversion
  * @see	__SW_RELEASE__
  * @see	SW_REL_REG
- * @see	config.h
  */
- uint16_t		sw_release;
+ uint16_t			sw_release;
 
 /**
  * @var	unsigned int sw_release_date
@@ -205,12 +215,11 @@ typedef enum
  * @see	SW_REL_DATE_REG
  * @see	config.h
  */
- uint32_t		sw_release_date;
+ uint32_t			sw_release_date;
 
- uint64_t		sw_git_short_hash;
+ _GIT_INFO_STRUCT	git;
 
- const char		sw_git_tag[20];
-}_SW_INFO_REGS;
+ }_SW_INFO_REGS;
 
 /**
  * @struct	_DEV_CONFIG_REGS
@@ -231,7 +240,7 @@ typedef enum
 
 	_BOARD_TYPE		board_type;
 
-	const char 		board_name[16];
+	const char 		board_name[20];
 
 	uint16_t		board_version;
 
@@ -260,6 +269,12 @@ typedef enum
 	* @brief			CAN-Bitrate des Controllers (default 500000 Bit/s)
 	*/
 	_CAN_BIT_RATE	app_can_bitrate;
+
+
+	uint16_t		can_trip_id;
+
+	uint16_t		can_broadcast_id;
+
 
  }_DEV_CONFIG_REGS;
 

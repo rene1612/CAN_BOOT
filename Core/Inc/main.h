@@ -40,6 +40,24 @@ extern "C" {
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
+#ifndef __BOARD_TYPE__
+	#define __BOARD_TYPE__				BMS_BLK_BOARD
+#endif
+
+//
+#define __BRD_ID__						0x02
+
+#ifndef __DEV_ID__
+	#define __DEV_ID__					(__BOARD_TYPE__ + __BRD_ID__)
+#endif
+
+
+#ifndef __BOARD_VERSION__
+	#define __BOARD_VERSION__			(0x0100)
+//	#define __BOARD_VERSION__			(0x0201)
+#endif
+
+#define __BOARD_NAME__ 					"BMS_BLK_BOARD"
 
 /* USER CODE END EC */
 
@@ -74,12 +92,12 @@ void Error_Handler(void);
 
 
 #define __DEV_SIGNATURE__			0x12
-#define __SW_RELEASE__				0x0101
-#define SW_RELEASE_DAY				24
-#define SW_RELEASE_MONTH			11
+#define __SW_RELEASE__				0x0102
+#define SW_RELEASE_DAY				3
+#define SW_RELEASE_MONTH			12
 #define SW_RELEASE_YEAR				2024
 #define __SW_RELEASE_DATE__			((SW_RELEASE_DAY<<24 ) | (SW_RELEASE_MONTH<<16) | SW_RELEASE_YEAR)
-#define __SW_NAME__	"BOOTLOADER"
+#define __SW_NAME__					"BOOTLOADER"
 
 
 
