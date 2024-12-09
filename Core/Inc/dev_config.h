@@ -108,6 +108,8 @@ typedef enum
 	BMS_GET_BLK_DATA_CMD,
 	BMS_GET_NEEY_DATA_CMD,
 	BMS_GET_ALL_DATA_CMD,
+	WS2815_SET_CMD,
+	WS2815_ENABLE_CMD,
 	\
 	/* BMS-MEASURE-COMMANDS (Boardtype: BMS_MEASURE_BOARD) */
 	ADC_OFFSET_CAL_CMD=0x40,
@@ -128,6 +130,15 @@ typedef enum
 	END_CMD
 }_CAN_CMD;
 
+typedef enum
+{
+	NONE				=0x00,
+	GET_MAIN_REGS		=0x00,
+	GET_SW_INFO_REGS	=0x01,
+	GET_DEV_CFG_REGS	=0x02,
+	GET_BRD_INFO_REGS	=0x04,
+	END
+}_CAN_GET_SYS_REG_TYPE;
 
 /******************************************************************************/
 /* Defines -------------------------------------------------------------------*/
@@ -135,7 +146,7 @@ typedef enum
 #define DEAULT_BL_CAN_BITRATE		(_CAN_BIT_RATE)_500_Kbit
 #define DEAULT_APP_CAN_BITRATE		(_CAN_BIT_RATE)_500_Kbit
 
-
+#define DEAULT_BOARD_NAME_SIZE		20
 
 
 #define DEAULT_TRIPP_CAN_ID			(BMS_MEASURE_BOARD + 1)
@@ -183,6 +194,19 @@ typedef enum
 	 const char 	date_str[12];
 	 const char 	info_tag_branch[64];
  }_GIT_INFO_STRUCT;
+
+
+ /**
+  * @struct	_BOARD_INFO_STRUCT
+  * @brief	boarname
+  *
+  * @note
+  * @see		BOARD_TYPE
+  */
+  typedef struct
+  {
+ 	 const char 	board_name[DEAULT_BOARD_NAME_SIZE];
+  }_BOARD_INFO_STRUCT;
 
 /**
  * @struct	REG
