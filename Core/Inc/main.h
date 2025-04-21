@@ -45,7 +45,7 @@ extern "C" {
 #endif
 
 //
-#define __BRD_ID__						0x02
+#define __BRD_ID__						0x01
 
 #ifndef __DEV_ID__
 	#define __DEV_ID__					(__BOARD_TYPE__ + __BRD_ID__)
@@ -91,11 +91,11 @@ void Error_Handler(void);
 /* USER CODE BEGIN Private defines */
 
 
-#define __DEV_SIGNATURE__			0x12
+#define __DEV_SIGNATURE__			0x11
 #define __SW_RELEASE__				0x0102
-#define SW_RELEASE_DAY				3
-#define SW_RELEASE_MONTH			12
-#define SW_RELEASE_YEAR				2024
+#define SW_RELEASE_DAY				21
+#define SW_RELEASE_MONTH			04
+#define SW_RELEASE_YEAR				2025
 #define __SW_RELEASE_DATE__			((SW_RELEASE_DAY<<24 ) | (SW_RELEASE_MONTH<<16) | SW_RELEASE_YEAR)
 #define __SW_NAME__					"BOOTLOADER"
 

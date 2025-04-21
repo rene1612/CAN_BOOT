@@ -46,7 +46,20 @@ defined in linker script */
 /* end address for the .bss section. defined in linker script */
 .word _ebss
 
+/* end address for the flash (code/text) section. defined in linker script */
+.word _einit_array
+
+/* start address for the initialization values of the .code/test section.
+defined in linker script */
+.word _sitext
+
+.word _StartRAM
+
 .equ  BootRAM, 0xF108F85F
+.equ  _Reset_Handler, 0x800115c
+
+//.equ  StartRAM, 0x20000000
+
 /**
  * @brief  This is the code that gets called when the processor first
  *          starts execution following a reset event. Only the absolutely
@@ -60,6 +73,28 @@ defined in linker script */
   .weak Reset_Handler
   .type Reset_Handler, %function
 Reset_Handler:
+
+#ifdef __RELEASE__
+
+/* Copy the flash segment that contains all the bootloader code from flash to SRAM */
+  ldr r0, =_StartRAM
+  ldr r1, =_einit_array
+  ldr r2, =_sitext
+  movs r3, #0
+  b LoopCopyTextInit
+
+CopyTextInit:
+  ldr r4, [r2, r3]
+  str r4, [r0, r3]
+  adds r3, r3, #4
+
+LoopCopyTextInit:
+  adds r4, r0, r3
+  cmp r4, r1
+  bcc CopyTextInit
+
+#endif
+
 
 /* Copy the data segment initializers from flash to SRAM */
   ldr r0, =_sdata
@@ -129,7 +164,7 @@ Infinite_Loop:
 g_pfnVectors:
 
   .word _estack
-  .word Reset_Handler
+  .word _Reset_Handler
   .word NMI_Handler
   .word HardFault_Handler
   .word MemManage_Handler

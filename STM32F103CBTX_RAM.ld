@@ -36,11 +36,9 @@
 ENTRY(Reset_Handler)
 
 /* Highest address of the user mode stack */
+/*_Reset_Handler = LOADADDR(Reset_Handler)*/
 _estack = ORIGIN(RAM) + LENGTH(RAM); /* end of "RAM" Ram type memory */
-
-_einit_array = ORIGIN (CODERAM);
 _StartRAM = ORIGIN (CODERAM);
-
 
 _Min_Heap_Size = 0x200; /* required amount of heap */
 _Min_Stack_Size = 0x400; /* required amount of stack */
@@ -49,9 +47,9 @@ _Min_Stack_Size = 0x400; /* required amount of stack */
 MEMORY
 {
   CODERAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH =  16K
-  RAM    (xrw)    : ORIGIN = 0x20004000,   LENGTH = 4K
+  RAM    	(xrw)    : ORIGIN = 0x20004000,   LENGTH = 4K
 /* USER CODE BEGIN PD */
-  FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 32K
+  FLASH    (rxw)    : ORIGIN = 0x8000000,   LENGTH = 32K
   FLASH1    (xrw)    : ORIGIN = 0x801F800,   LENGTH = 1K
   FLASH2    (xrw)    : ORIGIN = 0x801FC00,   LENGTH = 1K
 /* USER CODE END PD */
@@ -69,19 +67,19 @@ SECTIONS
     . = ALIGN(4);
     KEEP(*(.isr_vector)) /* Startup code */
     . = ALIGN(4);
-  } >FLASH
+  } >CODERAM AT> FLASH
 
 /* USER CODE BEGIN PD */
   /* BOARD NAME GOES INTO FLASH */
   .board_info : 
   {
   	KEEP(*(.board_info))
-  } >FLASH
+  } >CODERAM AT> FLASH
   
   .sw_info : 
   {
   	KEEP(*(.sw_info))
-  } >FLASH
+  } >CODERAM AT> FLASH
   
 /* USER CODE END PD */
 
@@ -100,7 +98,7 @@ SECTIONS
 
     . = ALIGN(4);
     _etext = .;        /* define a global symbols at end of code */
-  } >FLASH
+  } >CODERAM AT> FLASH
 
   /* Constant data into "FLASH" Rom type memory */
   .rodata :
@@ -109,13 +107,13 @@ SECTIONS
     *(.rodata)         /* .rodata sections (constants, strings, etc.) */
     *(.rodata*)        /* .rodata* sections (constants, strings, etc.) */
     . = ALIGN(4);
-  } >FLASH
+  } >CODERAM AT> FLASH
 
   .ARM.extab   : {
     . = ALIGN(4);
     *(.ARM.extab* .gnu.linkonce.armextab.*)
     . = ALIGN(4);
-  } >FLASH
+  } >CODERAM AT> FLASH
 
   .ARM : {
     . = ALIGN(4);
@@ -123,7 +121,7 @@ SECTIONS
     *(.ARM.exidx*)
     __exidx_end = .;
     . = ALIGN(4);
-  } >FLASH
+  } >CODERAM AT> FLASH
 
   .preinit_array     :
   {
@@ -132,7 +130,7 @@ SECTIONS
     KEEP (*(.preinit_array*))
     PROVIDE_HIDDEN (__preinit_array_end = .);
     . = ALIGN(4);
-  } >FLASH
+  } >CODERAM AT> FLASH
 
   .init_array :
   {
@@ -142,7 +140,9 @@ SECTIONS
     KEEP (*(.init_array*))
     PROVIDE_HIDDEN (__init_array_end = .);
     . = ALIGN(4);
-  } >FLASH
+    _einit_array = .;        /* define a global symbol at text end */
+    
+  } >CODERAM AT> FLASH
 
 /* USER CODE BEGIN PD */
   /* BOARD config GOES INTO FLASH1 */
@@ -168,7 +168,7 @@ SECTIONS
     KEEP (*(.fini_array*))
     PROVIDE_HIDDEN (__fini_array_end = .);
     . = ALIGN(4);
-  } >FLASH
+  } >RAM AT> FLASH
 
   /* Used by the startup to initialize data */
   _sidata = LOADADDR(.data);
@@ -186,7 +186,7 @@ SECTIONS
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
 
-  } >RAM AT> FLASH
+  } >CODERAM AT> FLASH
 
   /* Uninitialized data section into "RAM" Ram type memory */
   . = ALIGN(4);

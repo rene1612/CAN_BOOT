@@ -32,9 +32,9 @@
 #if __has_include("gitcommit.h")
 	#include "gitcommit.h"
 #else
-	#define __GIT_SHORT_HASH__ 0x0000000
+	#define __GIT_SHORT_HASH__ 0x10000002
 	#define __GIT_BRANCH__ "none"
-	#define __GIT_DATE_STR__ "2024-11-25"
+	#define __GIT_DATE_STR__ "2025-04-21"
 	#define __GIT_DATE_UT__ 1732571756
 #endif
 
@@ -136,31 +136,35 @@ __attribute__((__section__(".sw_info"))) const _SW_INFO_REGS sw_info_regs = {
 
 
 __attribute__((__section__(".dev_config"))) const _DEV_CONFIG_REGS dev_config_regs = {
-		__DEV_ID__,
-		__BOARD_TYPE__,
-		__BOARD_NAME__,
-		__BOARD_VERSION__,
-		__BOARD_MF_DATE__,
-		DEAULT_BL_CAN_BITRATE,
-		DEAULT_APP_CAN_BITRATE,
-		DEAULT_TRIPP_CAN_ID,
-		DEAULT_BROADCAST_CAN_ID
+	__DEV_ID__,
+	__BOARD_TYPE__,
+	__BOARD_NAME__,
+	__BOARD_VERSION__,
+	__BOARD_MF_DATE__,
+	DEAULT_BL_CAN_BITRATE,
+	DEAULT_APP_CAN_BITRATE,
+	DEAULT_TRIPP_CAN_ID,
+	DEAULT_BROADCAST_CAN_ID
 };
 
 
 __attribute__((__section__(".dev_crc_regs"))) const _DEV_CRC_REGS dev_crc_regs = {
-		~0U,	//BL crc32
-		DEV_BL_SIZE,
-		~0U,	//APP crc32
-		~0U,
-		~0U,	//APP_CONFIG crc32
-		~0U,
-		~0U,	//DEV_CONFIG crc32
-		sizeof(_DEV_CONFIG_REGS),
-		BL_PROTECTION_WRP,	// BL Flash Flags
-		BL_PROTECTION_NONE,	// APP Flash Flags
-		BL_PROTECTION_NONE,	// APP_CONFIG Flash Flags
-		BL_PROTECTION_NONE	// DEV_CONFIG Flash Flags
+	~0U,	//BL crc32
+	DEV_BL_SIZE,
+	~0U,	//APP crc32
+	~0U,
+	~0U,	//APP_CONFIG crc32
+	~0U,
+	~0U,	//DEV_CONFIG crc32
+	sizeof(_DEV_CONFIG_REGS),
+#ifdef __DEBUG__
+	BL_PROTECTION_WRP,	// BL Flash Flags
+#else
+	BL_PROTECTION_NONE,	// BL Flash Flags
+#endif
+	BL_PROTECTION_NONE,	// APP Flash Flags
+	BL_PROTECTION_NONE,	// APP_CONFIG Flash Flags
+	BL_PROTECTION_NONE	// DEV_CONFIG Flash Flags
 };
 
 //const _DEV_CONFIG_REGS* pDevConfig = (const _DEV_CONFIG_REGS*)DEV_CONFIG_FL_ADDRESS;
@@ -195,9 +199,9 @@ void SystemClock_Config(void);
 void config_can_filter(void);
 void CAN_TX_Cplt(CAN_HandleTypeDef* phcan);
 void Run_Application();
-
 void send_confirm_msg(uint8_t status);
 /* USER CODE END PFP */
+
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
