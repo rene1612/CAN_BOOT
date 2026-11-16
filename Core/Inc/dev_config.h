@@ -39,10 +39,10 @@
 	#define DEV_APP_ADDRESS				(uint32_t)0x08008000UL    /* Start address of application space in flash */
 	//#define DEV_APP_END_ADDRESS			(uint32_t)0x0801EFFF    /* End address of application space (addr. of last byte) */
 	//#define DEV_APP_SIZE				(uint32_t)(((DEV_APP_END_ADDRESS - DEV_APP_ADDRESS) + 1)) /* Size of application in DWORD (32bits or 4bytes) */
-	#define DEV_APP_SIZE				(uint32_t)0x00016000UL 	/* Size of application in DWORD (32bits or 4bytes) */
+	#define DEV_APP_SIZE				(uint32_t)0x00017000UL 	/* Size of application in DWORD (32bits or 4bytes) */
 
-	#define DEV_APP_CONFIG_FL_ADDRESS	(uint32_t)0x0801E800UL	/* Start address of app-config */
-	#define DEV_APP_CONFIG_SIZE			(uint32_t)0x00001000UL	/* Lenght of the app-config (4KB) */
+	#define DEV_APP_CONFIG_FL_ADDRESS	(uint32_t)0x0801F800UL	/* Start address of app-config */
+	#define DEV_APP_CONFIG_SIZE			(uint32_t)0x00000800UL	/* Lenght of the app-config (4KB) */
 
 	#define DEV_CONFIG_FL_ADDRESS		(uint32_t)0x0801F800UL	/* Start address of config */
 	#define DEV_CONFIG_FL_SIZE			(uint32_t)0x00000400UL	/* Lenght of the bootloader (1KB) */
